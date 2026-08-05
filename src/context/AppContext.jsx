@@ -1,0 +1,275 @@
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { calculateTempleStatus, DEFAULT_SCHEDULE_STORE } from '../utils/scheduler'
+import { saveCloudData, loadCloudData, subscribeToCloud, STORAGE_KEYS } from '../services/db'
+
+const AppContext = createContext(undefined)
+
+export const INITIAL_GALLERY_ITEMS = [
+  {
+    id: 'g1',
+    title: 'Majestic Main Gopuram',
+    category: 'Temple',
+    description: 'Golden hour perspective of our traditional South Indian gopuram with intricate sacred carvings.',
+    image: 'https://images.unsplash.com/photo-1608958416713-ef377227443e?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-square'
+  },
+  {
+    id: 'g2',
+    title: 'Sree Vasavi Devi Alankaram',
+    category: 'Poojas',
+    description: 'Special silk and gold ornament decoration during Friday morning Archana rituals.',
+    image: 'https://images.unsplash.com/photo-1590073844006-33379778ae09?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[3/4]'
+  },
+  {
+    id: 'g3',
+    title: 'Navarathri Deepotsavam',
+    category: 'Festivals',
+    description: 'Thousands of glowing oil lamps illuminating the temple courtyard on Vijayadasami.',
+    image: 'https://images.unsplash.com/photo-1602613977505-11996517af5e?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[4/3]'
+  },
+  {
+    id: 'g4',
+    title: 'New Annadanam Hall Progress',
+    category: 'Construction',
+    description: 'Ongoing development of our multi-purpose dining hall to serve free meals to 5,000 pilgrims daily.',
+    image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186244f?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[16/9]'
+  },
+  {
+    id: 'g5',
+    title: 'Inner Sanctum Sanctity',
+    category: 'Temple',
+    description: 'Serene atmosphere of the inner shrine before morning Suprabhatam prayers.',
+    image: 'https://images.unsplash.com/photo-1609137144813-7d722d56a2cb?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-square'
+  },
+  {
+    id: 'g6',
+    title: 'Special Kumkum Archana Seva',
+    category: 'Poojas',
+    description: 'Devotees offering sacred vermilion powders during the annual Varalakshmi Vratam.',
+    image: 'https://images.unsplash.com/photo-1609137144675-9b2f2b3806eb?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[4/3]'
+  },
+  {
+    id: 'g7',
+    title: 'Utlotsavam Dahi Handi',
+    category: 'Festivals',
+    description: 'Youth celebrating Krishna Janmashtami with traditional pot breaking rituals.',
+    image: 'https://images.unsplash.com/photo-1617135671158-989e51b4e868?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[3/4]'
+  },
+  {
+    id: 'g8',
+    title: 'Rajagopuram Stone Carvings',
+    category: 'Construction',
+    description: 'Artisans hand-crafting granite stone pillars for the new East Tower expansion.',
+    image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[4/3]'
+  },
+  {
+    id: 'g9',
+    title: 'Temple Courtyard Illumination',
+    category: 'Temple',
+    description: 'Atmospheric evening view showing lit pradakshina pathways.',
+    image: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[16/9]'
+  },
+  {
+    id: 'g10',
+    title: 'Diwali Lamp Lightings',
+    category: 'Festivals',
+    description: 'Sacred diyas arranged in traditional rangoli patterns across the main hall.',
+    image: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-square'
+  },
+  {
+    id: 'g11',
+    title: 'Maha Rudra Abhishekam',
+    category: 'Poojas',
+    description: 'High priests performing holy bath rituals with Panchamrit and sacred flowers.',
+    image: 'https://images.unsplash.com/photo-1602613977505-11996517af5e?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[3/4]'
+  },
+  {
+    id: 'g12',
+    title: 'Gopuram Tower Gold Plating',
+    category: 'Construction',
+    description: 'Consecration preparations for the new Kalasam gold-gilding ceremony.',
+    image: 'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'aspect-[4/3]'
+  }
+]
+
+export const DEFAULT_CONTACT_DETAILS = {
+  phone: '+91 88888 99999',
+  whatsapp: '+91 99999 88888',
+  email: 'contact@vasavitemple.org',
+  workingHours: '6:00 AM - 12:30 PM | 4:00 PM - 8:30 PM',
+  address: 'Main Bazar Road, Sree Vasavi Sanctum Complex, Penugonda, Andhra Pradesh, India.',
+  googleMapsUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15291.688320498188!2d81.590124!3d16.634125!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a3628e4e94b5b7b%3A0x6b4a243e88888888!2sPenugonda%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin',
+  youtubeUrl: 'https://youtube.com',
+  facebookUrl: 'https://facebook.com',
+  instagramUrl: 'https://instagram.com',
+  whatsappChannelUrl: 'https://whatsapp.com'
+}
+
+export const DEFAULT_ABOUT_DETAILS = {
+  subTitle: 'Sacred History & Heritage',
+  title: 'Sree Vasavi Kanyaka Parameswari Devi',
+  heroImage: '/temple-hero.jpg',
+  introText: 'Discover the divine story of Goddess Vasavi Devi, the sacred birthplace of Penugonda kshetram, and the timeless message of Ahimsa and Dharmic devotion.',
+  storyTitle: 'The Sacred Legend of Penugonda Kshetram',
+  storyContent: 'Sree Vasavi Kanyaka Parameswari Devi is revered as an embodiment of Goddess Parvati. Born to King Kusuma Shresthi and Kousalyamamba in Penugonda, she exemplified supreme wisdom, compassion, and divine purity from early childhood. To prevent bloodshed and uphold non-violence (Ahimsa), Goddess Vasavi entered the sacred fire (Agni Pravesam) along with 102 Gotra couples. Her eternal sacrifice sanctified Penugonda as the divine Moolakshetram, inspiring millions worldwide.',
+  values: [
+    { title: 'Ahimsa & Peace', description: 'Promoting non-violence, universal harmony, and compassion across humanity.' },
+    { title: 'Dharmic Heritage', description: 'Preserving ancient Vedic traditions, sacred rituals, and spiritual purity.' },
+    { title: 'Nitya Annadanam', description: 'Serving free daily meals and supporting education and welfare for all pilgrims.' }
+  ],
+  timeline: [
+    { year: '11th Century', title: 'Divine Avatar in Penugonda', description: 'Goddess Vasavi Devi lived in Penugonda, establishing the sacred values of Ahimsa and Atma Tyagam.' },
+    { year: '1975', title: 'Sanctum & Gopuram Consecration', description: 'Rebuilding of the main sanctum and gilding of sacred temple gopurams.' },
+    { year: '2026', title: 'Modern Pilgrim Amenities & Annadanam', description: 'Expanding facilities to serve over 5,000 pilgrims daily with free meals and digital seva.' }
+  ],
+  managementTitle: 'Penugonda Vasavi Devasthanam Trust',
+  managementDescription: 'The temple is managed with complete devotion, transparency, and service by the governing trust committee dedicated to preserving sacred traditions and serving devotees.'
+}
+
+export const DEFAULT_DONATION_STORE = {
+  title: "Sacred E-Donations & Seva (UPI / PhonePe)",
+  subtitle: "Scan the official temple UPI QR code or tap PhonePe to donate directly",
+  upiId: "vasavitemple@ybl",
+  payeeName: "Sree Vasavi Kanyaka Parameswari Devasthanam",
+  presetAmounts: [101, 501, 1008, 2116, 5001, 10008],
+  customQrUrl: ""
+}
+
+export const AppProvider = ({ children }) => {
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('vasavi_temple_lang') || 'EN'
+  })
+  
+  const [activeNotification, setActiveNotification] = useState({
+    show: true,
+    message: "Special Abhishekam booking is open for upcoming Sravana Shukravaram.",
+    type: "info"
+  })
+  
+  const [visitorCount, setVisitorCount] = useState(120485)
+  const [scheduleStore, setScheduleStore] = useState(DEFAULT_SCHEDULE_STORE)
+  const [scheduleJSON, setScheduleJSON] = useState(() => calculateTempleStatus(new Date(), DEFAULT_SCHEDULE_STORE))
+
+  const [galleryStore, setGalleryStore] = useState(() => {
+    return loadCloudData(STORAGE_KEYS.GALLERY, INITIAL_GALLERY_ITEMS)
+  })
+
+  const [contactStore, setContactStore] = useState(() => {
+    return loadCloudData(STORAGE_KEYS.CONTACT, DEFAULT_CONTACT_DETAILS)
+  })
+
+  const [aboutStore, setAboutStore] = useState(() => {
+    return loadCloudData(STORAGE_KEYS.ABOUT, DEFAULT_ABOUT_DETAILS)
+  })
+
+  const [donationStore, setDonationStore] = useState(() => {
+    return loadCloudData(STORAGE_KEYS.DONATION, DEFAULT_DONATION_STORE)
+  })
+
+  useEffect(() => {
+    localStorage.setItem('vasavi_temple_lang', language)
+  }, [language])
+
+  // Live Cloud Subscription Listener
+  useEffect(() => {
+    const unsubscribe = subscribeToCloud(({ key, data }) => {
+      if (key === STORAGE_KEYS.GALLERY) setGalleryStore(data)
+      if (key === STORAGE_KEYS.CONTACT) setContactStore(data)
+      if (key === STORAGE_KEYS.ABOUT) setAboutStore(data)
+      if (key === STORAGE_KEYS.DONATION) setDonationStore(data)
+      if (key === STORAGE_KEYS.SCHEDULE) setScheduleStore(data)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const updateGalleryStore = (newGallery) => {
+    setGalleryStore(newGallery)
+    saveCloudData(STORAGE_KEYS.GALLERY, newGallery)
+  }
+
+  const updateContactStore = (newDetails) => {
+    setContactStore(newDetails)
+    saveCloudData(STORAGE_KEYS.CONTACT, newDetails)
+  }
+
+  const updateAboutStore = (newDetails) => {
+    setAboutStore(newDetails)
+    saveCloudData(STORAGE_KEYS.ABOUT, newDetails)
+  }
+
+  const updateDonationStore = (newStore) => {
+    setDonationStore(newStore)
+    saveCloudData(STORAGE_KEYS.DONATION, newStore)
+  }
+
+  // Live schedule tick calculation every 1 second
+  useEffect(() => {
+    const updateSchedule = () => {
+      const newStatus = calculateTempleStatus(new Date(), scheduleStore)
+      setScheduleJSON(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newStatus)) {
+          return prev
+        }
+        return newStatus
+      })
+    }
+    updateSchedule()
+    const timer = setInterval(updateSchedule, 1000)
+    return () => clearInterval(timer)
+  }, [scheduleStore])
+
+  const dismissNotification = () => {
+    setActiveNotification(prev => ({ ...prev, show: false }))
+  }
+
+  const changeLanguage = (lang) => {
+    setLanguage(lang)
+  }
+
+  const updateScheduleStore = (newStore) => {
+    setScheduleStore(newStore)
+    saveCloudData(STORAGE_KEYS.SCHEDULE, newStore)
+  }
+
+  return (
+    <AppContext.Provider value={{
+      language,
+      changeLanguage,
+      activeNotification,
+      dismissNotification,
+      visitorCount,
+      scheduleJSON,
+      scheduleStore,
+      updateScheduleStore,
+      galleryStore,
+      updateGalleryStore,
+      contactStore,
+      updateContactStore,
+      aboutStore,
+      updateAboutStore,
+      donationStore,
+      updateDonationStore
+    }}>
+      {children}
+    </AppContext.Provider>
+  )
+}
+
+export const useApp = () => {
+  const context = useContext(AppContext)
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider')
+  }
+  return context
+}
