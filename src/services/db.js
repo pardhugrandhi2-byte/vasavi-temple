@@ -1,21 +1,28 @@
 // Cloud Database Sync Service for Sree Vasavi Temple Web Application
-// Provides real-time cloud data persistence across all devices globally.
+// Connects to a Node.js/Express REST API hosted on Render.
+// Falls back gracefully to localStorage when the backend is unreachable.
 
-const CLOUD_STORAGE_KEY = 'vasavi_temple_cloud_v1'
+// ─────────────────────────────────────────────────────────────────────────────
+// Backend URL – set VITE_API_URL in .env.local to your Render service URL.
+// Example: VITE_API_URL=https://vasavi-temple-api.onrender.com
+// ─────────────────────────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
+  : null
 
-// Local storage keys
+// Local storage keys (unchanged — used as offline cache)
 export const STORAGE_KEYS = {
-  GALLERY: 'vasavi_temple_gallery',
-  CONTACT: 'vasavi_temple_contact',
-  ABOUT: 'vasavi_temple_about',
-  DONATION: 'vasavi_temple_donation',
-  NOTICES: 'vasavi_temple_notices',
-  FESTIVALS: 'vasavi_temple_festivals',
-  SCHEDULE: 'vasavi_temple_schedule',
+  GALLERY:      'vasavi_temple_gallery',
+  CONTACT:      'vasavi_temple_contact',
+  ABOUT:        'vasavi_temple_about',
+  DONATION:     'vasavi_temple_donation',
+  NOTICES:      'vasavi_temple_notices',
+  FESTIVALS:    'vasavi_temple_festivals',
+  SCHEDULE:     'vasavi_temple_schedule',
   CLOUD_CONFIG: 'vasavi_temple_cloud_config'
 }
 
-// In-memory cache & listeners
+// ── In-memory pub/sub (unchanged) ────────────────────────────────────────────
 let cloudListeners = []
 
 export const subscribeToCloud = (callback) => {
@@ -29,7 +36,31 @@ const notifyListeners = (data) => {
   cloudListeners.forEach(l => l(data))
 }
 
-// Get Cloud Configuration
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Generic fetch wrapper — returns null on any error */
+const apiFetch = async (path, options = {}) => {
+  if (!API_BASE) return null
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    })
+    if (!res.ok) {
+      console.warn(`[API] ${options.method || 'GET'} ${path} → HTTP ${res.status}`)
+      return null
+    }
+    return await res.json()
+  } catch (err) {
+    console.warn(`[API] Network error (${path}):`, err.message)
+    return null
+  }
+}
+
+// ── Cloud Config (legacy – kept for Admin panel compatibility) ────────────────
 export const getCloudConfig = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_CONFIG)
@@ -38,120 +69,112 @@ export const getCloudConfig = () => {
     console.error('Error loading cloud config:', e)
   }
   return {
-    provider: 'Cloud Database REST API',
-    status: 'Connected & Live',
-    endpointUrl: '', // e.g. Firebase / Supabase / JSONBin REST API URL
-    apiKey: '',
+    provider: API_BASE ? 'Render REST API' : 'Local Storage Only',
+    status:   API_BASE ? 'Connected to Render' : 'No backend configured',
+    endpointUrl: API_BASE || '',
+    apiKey:   '',
     autoSync: true
   }
 }
 
-// Save Cloud Configuration
 export const saveCloudConfig = (config) => {
   localStorage.setItem(STORAGE_KEYS.CLOUD_CONFIG, JSON.stringify(config))
 }
 
-// Fetch fresh data from remote Cloud REST API if endpoint is set
-export const fetchRemoteCloudData = async () => {
-  const config = getCloudConfig()
-  if (!config.endpointUrl) return null
+// ── Core API calls ────────────────────────────────────────────────────────────
 
-  try {
-    const res = await fetch(config.endpointUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(config.apiKey ? { 'X-Master-Key': config.apiKey, 'apikey': config.apiKey } : {})
-      }
-    })
-    if (res.ok) {
-      const data = await res.json()
-      const payload = data.record || data.data || data
-      if (payload && typeof payload === 'object') {
-        Object.keys(payload).forEach(key => {
-          if (payload[key]) {
-            localStorage.setItem(key, JSON.stringify(payload[key]))
-            notifyListeners({ key, data: payload[key] })
-          }
-        })
-        return payload
-      }
+/**
+ * Fetch ALL temple data from Render backend.
+ * On success, seeds every key into localStorage and notifies subscribers.
+ */
+export const fetchRemoteCloudData = async () => {
+  if (!API_BASE) return null
+
+  const result = await apiFetch('/data')
+  if (!result?.data) return null
+
+  const payload = result.data
+  Object.keys(payload).forEach(key => {
+    if (payload[key] !== undefined && payload[key] !== null) {
+      localStorage.setItem(key, JSON.stringify(payload[key]))
+      notifyListeners({ key, data: payload[key] })
     }
-  } catch (err) {
-    console.warn('Remote Cloud DB fetch warning:', err)
-  }
-  return null
+  })
+
+  console.log('[API] Synced from Render backend ✓')
+  return payload
 }
 
-// Save dataset to both Cloud and Local Storage
+/**
+ * Save a single key-value pair.
+ * 1. Saves to localStorage immediately (zero-latency UI update).
+ * 2. PUTs the full snapshot to the Render backend.
+ */
 export const saveCloudData = async (key, data) => {
   try {
-    // 1. Save locally for zero-latency instant response
+    // 1. Instant local save
     localStorage.setItem(key, JSON.stringify(data))
-
-    // 2. Notify in-memory subscribers
     notifyListeners({ key, data })
 
-    // 3. Save to Cloud Sync Store snapshot
-    const currentCloudStore = getFullCloudState()
-    currentCloudStore[key] = data
-    localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(currentCloudStore))
+    // 2. Build full snapshot and push to Render
+    const currentSnapshot = getFullCloudState()
+    currentSnapshot[key] = data
+    localStorage.setItem('vasavi_temple_cloud_v1', JSON.stringify(currentSnapshot))
 
-    // 4. Sync to remote Cloud REST API (Firebase / Supabase / custom backend) if configured
-    const config = getCloudConfig()
-    if (config.endpointUrl) {
-      await fetch(config.endpointUrl, {
+    if (API_BASE) {
+      const res = await apiFetch('/data', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(config.apiKey ? { 'X-Master-Key': config.apiKey, 'apikey': config.apiKey } : {})
-        },
-        body: JSON.stringify(currentCloudStore)
-      }).catch(err => console.warn('Remote Cloud API sync warning:', err))
+        body: JSON.stringify(currentSnapshot)
+      })
+      if (res?.success) {
+        console.log(`[API] "${key}" persisted to Render ✓`)
+      } else {
+        console.warn(`[API] Render sync failed for key: "${key}" — localStorage retained`)
+      }
     }
 
     return { success: true }
   } catch (error) {
-    console.error('Error saving data to cloud:', error)
+    console.error('Error saving data:', error)
     return { success: false, error: error.message }
   }
 }
 
-// Load dataset from Cloud or Local Storage
+/**
+ * Load a single key from localStorage (instant, offline-safe).
+ * The Render backend is synced in bulk on app load via fetchRemoteCloudData().
+ */
 export const loadCloudData = (key, fallback) => {
   try {
     const saved = localStorage.getItem(key)
-    if (saved) {
-      return JSON.parse(saved)
-    }
+    if (saved) return JSON.parse(saved)
   } catch (e) {
     console.error(`Error loading data for ${key}:`, e)
   }
   return fallback
 }
 
-// Get entire snapshot of temple website state
+/** Build a full snapshot of the current temple state from localStorage */
 export const getFullCloudState = () => {
   try {
-    const saved = localStorage.getItem(CLOUD_STORAGE_KEY)
+    const saved = localStorage.getItem('vasavi_temple_cloud_v1')
     if (saved) return JSON.parse(saved)
   } catch (e) {
     console.error('Error loading full cloud state:', e)
   }
-
   return {
-    [STORAGE_KEYS.GALLERY]: loadCloudData(STORAGE_KEYS.GALLERY, null),
-    [STORAGE_KEYS.CONTACT]: loadCloudData(STORAGE_KEYS.CONTACT, null),
-    [STORAGE_KEYS.ABOUT]: loadCloudData(STORAGE_KEYS.ABOUT, null),
-    [STORAGE_KEYS.DONATION]: loadCloudData(STORAGE_KEYS.DONATION, null),
-    [STORAGE_KEYS.NOTICES]: loadCloudData(STORAGE_KEYS.NOTICES, null),
+    [STORAGE_KEYS.GALLERY]:   loadCloudData(STORAGE_KEYS.GALLERY, null),
+    [STORAGE_KEYS.CONTACT]:   loadCloudData(STORAGE_KEYS.CONTACT, null),
+    [STORAGE_KEYS.ABOUT]:     loadCloudData(STORAGE_KEYS.ABOUT, null),
+    [STORAGE_KEYS.DONATION]:  loadCloudData(STORAGE_KEYS.DONATION, null),
+    [STORAGE_KEYS.NOTICES]:   loadCloudData(STORAGE_KEYS.NOTICES, null),
     [STORAGE_KEYS.FESTIVALS]: loadCloudData(STORAGE_KEYS.FESTIVALS, null)
   }
 }
 
-// Auto-sync from remote Cloud API on load
+// ── Auto-sync on app load ─────────────────────────────────────────────────────
 if (typeof window !== 'undefined') {
   setTimeout(() => {
     fetchRemoteCloudData()
-  }, 1000)
+  }, 800)
 }

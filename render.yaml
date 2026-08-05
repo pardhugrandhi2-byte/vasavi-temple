@@ -1,0 +1,18 @@
+# Render Deployment Configuration for Vasavi Temple Backend
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: vasavi-temple-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: temple-data
+      mountPath: /app
+      sizeGB: 1
