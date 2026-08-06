@@ -25,14 +25,17 @@ const UpiDonationSection = ({ title }) => {
   const activeAmount = customAmount ? parseFloat(customAmount) || 0 : (presetAmounts[0] || 101)
 
   // Construct parameters with strict NPCI UPI POS specs (mc=7399 for Religious Orgs, mode=02 for POS/Trust QR)
-  const noteText = `Temple Donation${devoteeName ? ' - ' + devoteeName : ''}${devoteeGotram ? ' (' + devoteeGotram + ')' : ''}`
-  const noteParam = encodeURIComponent(noteText)
+  const noteParts = []
+  if (devoteeName && devoteeName.trim()) noteParts.push(devoteeName.trim())
+  if (devoteeGotram && devoteeGotram.trim()) noteParts.push(`(${devoteeGotram.trim()})`)
+  const noteText = noteParts.join(' ')
+  const noteParam = noteText ? `&tn=${encodeURIComponent(noteText)}` : ''
   
   // QR Code UPI string — includes mc=7399 & mode=02 & am= so scanner pre-fills amount seamlessly
-  const upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR&tn=${noteParam}`
+  const upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR${noteParam}`
 
   // Deep Link UPI string — includes mc=7399 & mode=02 for POS/Trust VPAs
-  const phonepeDirectUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&cu=INR&tn=${noteParam}`
+  const phonepeDirectUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&cu=INR${noteParam}`
 
   // Always generate dynamic QR code with embedded activeAmount (&am=101) so phone scanners pre-fill ₹101 automatically!
   const dynamicQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}&color=4A0E17&bgcolor=FFFDF8`
@@ -267,20 +270,12 @@ const UpiDonationSection = ({ title }) => {
                 <span>OPEN UPI APP — ENTER ₹{activeAmount}</span>
                 <ExternalLink className="w-3.5 h-3.5 text-purple-200" />
               </button>
-              {/* Hint & Payment Guidance Note */}
-              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-[10px] text-amber-900 dark:text-amber-200 text-left leading-relaxed font-serif">
-                <strong className="font-sans font-bold block text-[10px] text-amber-800 dark:text-amber-300 mb-0.5">💡 Payment Tip for PhonePe / GPay:</strong>
-                <span>Because this is a POS Merchant VPA (<code className="font-mono bg-white dark:bg-gray-800 px-1 rounded font-bold">{upiId}</code>), if PhonePe restricts browser direct links:</span>
-                <ul className="list-disc pl-3.5 mt-1 space-y-0.5 font-sans font-medium text-[9.5px]">
-                  <li><strong>Method 1:</strong> Scan the QR code image above using PhonePe/GPay scanner.</li>
-                  <li><strong>Method 2:</strong> Tap <strong>Copy UPI ID</strong>, open PhonePe → <em>"To UPI ID"</em> → Paste &amp; Pay directly via Bank Account.</li>
-                </ul>
-              </div>
+
 
               {/* Secondary Apps */}
               <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold mt-1">
                 <a
-                  href={`gpay://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR&tn=${noteParam}`}
+                  href={`gpay://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR${noteParam}`}
                   onClick={(e) => handleGenericPay('Google Pay', e.currentTarget.href)}
                   className="py-1.5 px-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:border-blue-500 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                 >
@@ -288,7 +283,7 @@ const UpiDonationSection = ({ title }) => {
                 </a>
 
                 <a
-                  href={`paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR&tn=${noteParam}`}
+                  href={`paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&mc=7399&mode=02&orgid=000000&am=${activeAmount}&cu=INR${noteParam}`}
                   onClick={(e) => handleGenericPay('Paytm', e.currentTarget.href)}
                   className="py-1.5 px-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:border-cyan-500 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                 >
