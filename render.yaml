@@ -1,7 +1,8 @@
-# Render Deployment Configuration for Vasavi Temple Backend
+# Render Deployment Configuration for Vasavi Temple
 # See: https://render.com/docs/blueprint-spec
 
 services:
+  # ── Backend REST API ──────────────────────────────────────────
   - type: web
     name: vasavi-temple-api
     runtime: node
@@ -14,5 +15,20 @@ services:
         value: production
     disk:
       name: temple-data
-      mountPath: /app
+      mountPath: /opt/render/project/src
       sizeGB: 1
+
+  # ── Frontend Static Site ──────────────────────────────────────
+  - type: web
+    name: vasavi-temple-web
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        value: https://vasavi-temple-kadiyapulanka.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

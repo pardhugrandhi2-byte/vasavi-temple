@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { calculateTempleStatus, DEFAULT_SCHEDULE_STORE } from '../utils/scheduler'
-import { saveCloudData, loadCloudData, subscribeToCloud, STORAGE_KEYS } from '../services/db'
+import {
+  saveCloudData,
+  fetchRemoteCloudData,
+  subscribeToCloud,
+  STORAGE_KEYS
+} from '../services/db'
 
 const AppContext = createContext(undefined)
+
+// ── Default / Seed Data ───────────────────────────────────────────────────────
 
 export const INITIAL_GALLERY_ITEMS = [
   {
@@ -146,53 +153,84 @@ export const DEFAULT_DONATION_STORE = {
   customQrUrl: ""
 }
 
+// ── AppProvider ───────────────────────────────────────────────────────────────
+
 export const AppProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
+    // Language preference is the ONLY thing kept in localStorage (harmless UX preference)
     return localStorage.getItem('vasavi_temple_lang') || 'EN'
   })
-  
+
   const [activeNotification, setActiveNotification] = useState({
     show: true,
     message: "Special Abhishekam booking is open for upcoming Sravana Shukravaram.",
     type: "info"
   })
-  
-  const [visitorCount, setVisitorCount] = useState(120485)
+
+  const [visitorCount] = useState(120485)
+
+  // All data stores — initialized with defaults, populated from backend on mount
+  const [galleryStore, setGalleryStore] = useState(INITIAL_GALLERY_ITEMS)
+  const [contactStore, setContactStore] = useState(DEFAULT_CONTACT_DETAILS)
+  const [aboutStore, setAboutStore] = useState(DEFAULT_ABOUT_DETAILS)
+  const [donationStore, setDonationStore] = useState(DEFAULT_DONATION_STORE)
   const [scheduleStore, setScheduleStore] = useState(DEFAULT_SCHEDULE_STORE)
   const [scheduleJSON, setScheduleJSON] = useState(() => calculateTempleStatus(new Date(), DEFAULT_SCHEDULE_STORE))
 
-  const [galleryStore, setGalleryStore] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.GALLERY, INITIAL_GALLERY_ITEMS)
-  })
+  // Track whether backend data has loaded (to avoid flash of stale default content)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
-  const [contactStore, setContactStore] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.CONTACT, DEFAULT_CONTACT_DETAILS)
-  })
-
-  const [aboutStore, setAboutStore] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.ABOUT, DEFAULT_ABOUT_DETAILS)
-  })
-
-  const [donationStore, setDonationStore] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.DONATION, DEFAULT_DONATION_STORE)
-  })
-
+  // ── On mount: fetch all data from the Render backend ─────────────────────────
   useEffect(() => {
-    localStorage.setItem('vasavi_temple_lang', language)
-  }, [language])
+    fetchRemoteCloudData()
+      .then(data => {
+        // If backend returned data, update states directly here as a safety net
+        // (subscribeToCloud below also handles it — this is for initial load)
+        if (data) {
+          if (data[STORAGE_KEYS.GALLERY])  setGalleryStore(data[STORAGE_KEYS.GALLERY])
+          if (data[STORAGE_KEYS.CONTACT])  setContactStore(data[STORAGE_KEYS.CONTACT])
+          if (data[STORAGE_KEYS.ABOUT])    setAboutStore(data[STORAGE_KEYS.ABOUT])
+          if (data[STORAGE_KEYS.DONATION]) setDonationStore(data[STORAGE_KEYS.DONATION])
+          if (data[STORAGE_KEYS.SCHEDULE]) setScheduleStore(data[STORAGE_KEYS.SCHEDULE])
+        }
+        setIsDataLoaded(true)
+      })
+      .catch(() => setIsDataLoaded(true))
+  }, [])
 
-  // Live Cloud Subscription Listener
+  // ── Subscribe to real-time pub/sub (for instant Admin → website sync) ─────────
+  // When Admin saves (saveCloudData), it notifies listeners → state updates instantly
   useEffect(() => {
     const unsubscribe = subscribeToCloud(({ key, data }) => {
-      if (key === STORAGE_KEYS.GALLERY) setGalleryStore(data)
-      if (key === STORAGE_KEYS.CONTACT) setContactStore(data)
-      if (key === STORAGE_KEYS.ABOUT) setAboutStore(data)
+      if (key === STORAGE_KEYS.GALLERY)  setGalleryStore(data)
+      if (key === STORAGE_KEYS.CONTACT)  setContactStore(data)
+      if (key === STORAGE_KEYS.ABOUT)    setAboutStore(data)
       if (key === STORAGE_KEYS.DONATION) setDonationStore(data)
       if (key === STORAGE_KEYS.SCHEDULE) setScheduleStore(data)
     })
     return () => unsubscribe()
   }, [])
 
+  // ── Language preference ───────────────────────────────────────────────────────
+  useEffect(() => {
+    localStorage.setItem('vasavi_temple_lang', language)
+  }, [language])
+
+  // ── Live schedule tick ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const updateSchedule = () => {
+      const newStatus = calculateTempleStatus(new Date(), scheduleStore)
+      setScheduleJSON(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newStatus)) return prev
+        return newStatus
+      })
+    }
+    updateSchedule()
+    const timer = setInterval(updateSchedule, 1000)
+    return () => clearInterval(timer)
+  }, [scheduleStore])
+
+  // ── Update handlers (Admin → backend + instant state update) ─────────────────
   const updateGalleryStore = (newGallery) => {
     setGalleryStore(newGallery)
     saveCloudData(STORAGE_KEYS.GALLERY, newGallery)
@@ -213,34 +251,13 @@ export const AppProvider = ({ children }) => {
     saveCloudData(STORAGE_KEYS.DONATION, newStore)
   }
 
-  // Live schedule tick calculation every 1 second
-  useEffect(() => {
-    const updateSchedule = () => {
-      const newStatus = calculateTempleStatus(new Date(), scheduleStore)
-      setScheduleJSON(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(newStatus)) {
-          return prev
-        }
-        return newStatus
-      })
-    }
-    updateSchedule()
-    const timer = setInterval(updateSchedule, 1000)
-    return () => clearInterval(timer)
-  }, [scheduleStore])
-
-  const dismissNotification = () => {
-    setActiveNotification(prev => ({ ...prev, show: false }))
-  }
-
-  const changeLanguage = (lang) => {
-    setLanguage(lang)
-  }
-
   const updateScheduleStore = (newStore) => {
     setScheduleStore(newStore)
     saveCloudData(STORAGE_KEYS.SCHEDULE, newStore)
   }
+
+  const dismissNotification = () => setActiveNotification(prev => ({ ...prev, show: false }))
+  const changeLanguage = (lang) => setLanguage(lang)
 
   return (
     <AppContext.Provider value={{
@@ -259,7 +276,8 @@ export const AppProvider = ({ children }) => {
       aboutStore,
       updateAboutStore,
       donationStore,
-      updateDonationStore
+      updateDonationStore,
+      isDataLoaded
     }}>
       {children}
     </AppContext.Provider>

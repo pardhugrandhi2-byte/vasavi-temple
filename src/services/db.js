@@ -1,28 +1,26 @@
-// Cloud Database Sync Service for Sree Vasavi Temple Web Application
-// Connects to a Node.js/Express REST API hosted on Render.
-// Falls back gracefully to localStorage when the backend is unreachable.
+// ============================================================
+// Sree Vasavi Temple – Cloud Database Service
+// Backend (Render REST API) is the SINGLE SOURCE OF TRUTH.
+// No localStorage used for data — all reads/writes go to the backend.
+// ============================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Backend URL – set VITE_API_URL in .env.local to your Render service URL.
-// Example: VITE_API_URL=https://vasavi-temple-api.onrender.com
-// ─────────────────────────────────────────────────────────────────────────────
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
   : null
 
-// Local storage keys (unchanged — used as offline cache)
+// Storage keys — used as property names in the backend data.json
 export const STORAGE_KEYS = {
-  GALLERY:      'vasavi_temple_gallery',
-  CONTACT:      'vasavi_temple_contact',
-  ABOUT:        'vasavi_temple_about',
-  DONATION:     'vasavi_temple_donation',
-  NOTICES:      'vasavi_temple_notices',
-  FESTIVALS:    'vasavi_temple_festivals',
-  SCHEDULE:     'vasavi_temple_schedule',
-  CLOUD_CONFIG: 'vasavi_temple_cloud_config'
+  GALLERY:   'vasavi_temple_gallery',
+  CONTACT:   'vasavi_temple_contact',
+  ABOUT:     'vasavi_temple_about',
+  DONATION:  'vasavi_temple_donation',
+  NOTICES:   'vasavi_temple_notices',
+  FESTIVALS: 'vasavi_temple_festivals',
+  SCHEDULE:  'vasavi_temple_schedule',
 }
 
-// ── In-memory pub/sub (unchanged) ────────────────────────────────────────────
+// ── In-memory pub/sub ─────────────────────────────────────────────────────────
+// Used to push backend data into React state (AppContext) without prop drilling.
 let cloudListeners = []
 
 export const subscribeToCloud = (callback) => {
@@ -32,13 +30,11 @@ export const subscribeToCloud = (callback) => {
   }
 }
 
-const notifyListeners = (data) => {
-  cloudListeners.forEach(l => l(data))
+const notifyListeners = ({ key, data }) => {
+  cloudListeners.forEach(l => l({ key, data }))
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Generic fetch wrapper — returns null on any error */
+// ── Generic fetch wrapper ─────────────────────────────────────────────────────
 const apiFetch = async (path, options = {}) => {
   if (!API_BASE) return null
   try {
@@ -60,121 +56,85 @@ const apiFetch = async (path, options = {}) => {
   }
 }
 
-// ── Cloud Config (legacy – kept for Admin panel compatibility) ────────────────
-export const getCloudConfig = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_CONFIG)
-    if (saved) return JSON.parse(saved)
-  } catch (e) {
-    console.error('Error loading cloud config:', e)
-  }
-  return {
-    provider: API_BASE ? 'Render REST API' : 'Local Storage Only',
-    status:   API_BASE ? 'Connected to Render' : 'No backend configured',
-    endpointUrl: API_BASE || '',
-    apiKey:   '',
-    autoSync: true
-  }
-}
+// ── Cloud Config (for Admin panel display) ────────────────────────────────────
+export const getCloudConfig = () => ({
+  provider: API_BASE ? 'Render REST API' : 'Default Values (No backend)',
+  status:   API_BASE ? 'Connected' : 'Not configured',
+  endpointUrl: API_BASE ? import.meta.env.VITE_API_URL : '',
+  apiKey:   '',
+  autoSync: true
+})
 
-export const saveCloudConfig = (config) => {
-  localStorage.setItem(STORAGE_KEYS.CLOUD_CONFIG, JSON.stringify(config))
-}
+// No-op: cloud config is set via .env.local, not runtime
+export const saveCloudConfig = (_config) => {}
 
-// ── Core API calls ────────────────────────────────────────────────────────────
-
+// ── FETCH all data from backend ───────────────────────────────────────────────
 /**
- * Fetch ALL temple data from Render backend.
- * On success, seeds every key into localStorage and notifies subscribers.
+ * Fetches all temple data from the Render backend.
+ * Called on app startup by AppContext.
+ * Notifies all subscribers (AppContext) so React state is updated.
+ * Returns the full data payload or null if backend is unreachable.
  */
 export const fetchRemoteCloudData = async () => {
-  if (!API_BASE) return null
+  if (!API_BASE) {
+    console.info('[API] No backend URL configured — using default values.')
+    return null
+  }
 
   const result = await apiFetch('/data')
-  if (!result?.data) return null
+  if (!result?.data) {
+    console.warn('[API] Backend returned no data or is unreachable.')
+    return null
+  }
 
   const payload = result.data
-  Object.keys(payload).forEach(key => {
-    if (payload[key] !== undefined && payload[key] !== null) {
-      localStorage.setItem(key, JSON.stringify(payload[key]))
-      notifyListeners({ key, data: payload[key] })
-    }
-  })
+  const keys = Object.keys(payload).filter(k => payload[k] !== undefined && payload[k] !== null)
 
-  console.log('[API] Synced from Render backend ✓')
+  // Push each key into AppContext via pub/sub
+  keys.forEach(key => notifyListeners({ key, data: payload[key] }))
+
+  console.log(`[API] ✓ Loaded ${keys.length} stores from backend:`, keys.join(', '))
   return payload
 }
 
+// ── SAVE a single key to backend ─────────────────────────────────────────────
 /**
- * Save a single key-value pair.
- * 1. Saves to localStorage immediately (zero-latency UI update).
- * 2. PUTs the full snapshot to the Render backend.
+ * Saves a key-value pair to the Render backend.
+ * Also immediately notifies subscribers so React state updates without waiting.
+ * NO localStorage is used.
  */
 export const saveCloudData = async (key, data) => {
+  // Immediately update in-memory React state (instant UI update)
+  notifyListeners({ key, data })
+
+  if (!API_BASE) {
+    console.warn('[API] No backend configured. Data only in React state (will reset on refresh).')
+    return { success: false, error: 'No backend URL configured' }
+  }
+
   try {
-    // 1. Instant local save
-    localStorage.setItem(key, JSON.stringify(data))
-    notifyListeners({ key, data })
+    // PUT /api/data/:key — saves only this key on the backend
+    const res = await apiFetch(`/data/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
 
-    // 2. Build full snapshot and push to Render
-    const currentSnapshot = getFullCloudState()
-    currentSnapshot[key] = data
-    localStorage.setItem('vasavi_temple_cloud_v1', JSON.stringify(currentSnapshot))
-
-    if (API_BASE) {
-      const res = await apiFetch('/data', {
-        method: 'PUT',
-        body: JSON.stringify(currentSnapshot)
-      })
-      if (res?.success) {
-        console.log(`[API] "${key}" persisted to Render ✓`)
-      } else {
-        console.warn(`[API] Render sync failed for key: "${key}" — localStorage retained`)
-      }
+    if (res?.success) {
+      console.log(`[API] ✓ "${key}" saved to backend`)
+      return { success: true }
+    } else {
+      console.error(`[API] ✗ Backend rejected save for key: "${key}"`)
+      return { success: false, error: 'Backend save failed' }
     }
-
-    return { success: true }
   } catch (error) {
-    console.error('Error saving data:', error)
+    console.error('[API] Save error:', error)
     return { success: false, error: error.message }
   }
 }
 
+// ── LOAD (no-op — kept for compatibility) ─────────────────────────────────────
 /**
- * Load a single key from localStorage (instant, offline-safe).
- * The Render backend is synced in bulk on app load via fetchRemoteCloudData().
+ * Returns the fallback directly — backend data is loaded asynchronously
+ * via fetchRemoteCloudData() on app mount, not synchronously here.
  */
-export const loadCloudData = (key, fallback) => {
-  try {
-    const saved = localStorage.getItem(key)
-    if (saved) return JSON.parse(saved)
-  } catch (e) {
-    console.error(`Error loading data for ${key}:`, e)
-  }
-  return fallback
-}
-
-/** Build a full snapshot of the current temple state from localStorage */
-export const getFullCloudState = () => {
-  try {
-    const saved = localStorage.getItem('vasavi_temple_cloud_v1')
-    if (saved) return JSON.parse(saved)
-  } catch (e) {
-    console.error('Error loading full cloud state:', e)
-  }
-  return {
-    [STORAGE_KEYS.GALLERY]:   loadCloudData(STORAGE_KEYS.GALLERY, null),
-    [STORAGE_KEYS.CONTACT]:   loadCloudData(STORAGE_KEYS.CONTACT, null),
-    [STORAGE_KEYS.ABOUT]:     loadCloudData(STORAGE_KEYS.ABOUT, null),
-    [STORAGE_KEYS.DONATION]:  loadCloudData(STORAGE_KEYS.DONATION, null),
-    [STORAGE_KEYS.NOTICES]:   loadCloudData(STORAGE_KEYS.NOTICES, null),
-    [STORAGE_KEYS.FESTIVALS]: loadCloudData(STORAGE_KEYS.FESTIVALS, null)
-  }
-}
-
-// ── Auto-sync on app load ─────────────────────────────────────────────────────
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    fetchRemoteCloudData()
-  }, 800)
-}
+export const loadCloudData = (_key, fallback) => fallback

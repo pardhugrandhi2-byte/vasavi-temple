@@ -28,14 +28,14 @@ const UpiDonationSection = ({ title }) => {
   const noteText = `Temple Donation${devoteeName ? ' - ' + devoteeName : ''}${devoteeGotram ? ' (' + devoteeGotram + ')' : ''}`
   const noteParam = encodeURIComponent(noteText)
   
-  // Standard Dynamic UPI URI encoding exact active amount (&am=101)
+  // QR Code UPI string — includes &am= so scanner pre-fills amount (QR scan = P2P, this is safe)
   const upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${activeAmount}&cu=INR&tn=${noteParam}`
 
-  // Android PhonePe Direct Intent URI
-  const phonepeIntentUrl = `intent://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${activeAmount}&cu=INR&tn=${noteParam}#Intent;scheme=upi;package=com.phonepe.app;end`
-
-  // iOS PhonePe Scheme
-  const phonepeSchemeUrl = `phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${activeAmount}&cu=INR&tn=${noteParam}`
+  // Deep Link UPI string — NO &am= parameter!
+  // When &am= is present in a browser deep link, PhonePe treats it as a "merchant collect"
+  // which blocks payments even from savings account UPI. Removing &am= makes it P2P.
+  // User manually enters the amount inside PhonePe after the app opens.
+  const phonepeDirectUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&cu=INR&tn=${noteParam}`
 
   // Always generate dynamic QR code with embedded activeAmount (&am=101) so phone scanners pre-fill ₹101 automatically!
   const dynamicQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}&color=4A0E17&bgcolor=FFFDF8`
@@ -58,22 +58,15 @@ const UpiDonationSection = ({ title }) => {
   }
 
   // Direct PhonePe Launch Handler
-  const handlePhonePeClick = () => {
+  // Uses standard upi:// scheme — the mobile OS will open PhonePe (or show app chooser)
+  // Avoids intent:// which PhonePe blocks as a security measure when launched from browser
+  const handlePhonePeClick = (e) => {
+    e.preventDefault()
     navigator.clipboard.writeText(upiId).catch(() => {})
     setCopied(true)
-    showToast(`Launching PhonePe for ₹${activeAmount}...`)
-
-    const userAgent = navigator.userAgent || ''
-    const isAndroid = /Android/i.test(userAgent)
-    const isIOS = /iPhone|iPad|iPod/i.test(userAgent)
-
-    if (isAndroid) {
-      window.location.href = phonepeIntentUrl
-    } else if (isIOS) {
-      window.location.href = phonepeSchemeUrl
-    } else {
-      window.location.href = upiString
-    }
+    showToast(`Launching UPI payment for ₹${activeAmount}...`)
+    // Standard upi:// is the safest cross-platform approach
+    window.location.href = phonepeDirectUrl
   }
 
   const handleGenericPay = (appName, targetUrl) => {
@@ -266,17 +259,21 @@ const UpiDonationSection = ({ title }) => {
 
             {/* Direct Action Button: DONATE VIA PHONEPE */}
             <div className="w-full flex flex-col gap-1.5">
-              <a
-                href={upiString}
+              <button
+                type="button"
                 onClick={handlePhonePeClick}
                 className="w-full py-2.5 px-4 rounded-xl bg-[#5f259f] hover:bg-[#4a1d7c] text-white font-extrabold text-xs md:text-sm uppercase tracking-wider shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-95 cursor-pointer"
               >
                 <div className="w-5 h-5 rounded-full bg-white text-[#5f259f] flex items-center justify-center font-black text-[10px]">
                   पे
                 </div>
-                <span>DONATE ₹{activeAmount} VIA PHONEPE</span>
+                <span>OPEN UPI APP — ENTER ₹{activeAmount}</span>
                 <ExternalLink className="w-3.5 h-3.5 text-purple-200" />
-              </a>
+              </button>
+              {/* Hint: why user must enter amount manually */}
+              <p className="text-[10px] text-center text-gray-400 dark:text-gray-500 leading-tight px-1">
+                ⓘ App will open with UPI ID pre-filled. Enter <span className="font-bold text-temple-gold">₹{activeAmount}</span> manually &amp; pay. Or scan QR above for auto-fill.
+              </p>
 
               {/* Secondary Apps */}
               <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold">

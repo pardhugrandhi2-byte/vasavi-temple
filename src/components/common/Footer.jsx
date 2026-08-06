@@ -67,25 +67,35 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Timings Summary Column */}
-          <div className="flex flex-col gap-4">
-            <h3 className="font-display font-semibold text-lg text-temple-gold tracking-wide relative pb-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-8 after:h-0.5 after:bg-temple-gold">
-              Daily Hours
-            </h3>
-            <div className="flex flex-col gap-3 text-sm text-white/85">
-              <div className="flex justify-between border-b border-white/10 pb-1.5">
-                <span>Morning Darshan:</span>
-                <span className="font-medium text-temple-gold">6:00 AM - 12:30 PM</span>
+          {/* Timings Summary Column — reads live from Admin → Contact Details → workingHours */}
+          {(() => {
+            // workingHours format: "6:00 AM - 12:30 PM | 4:00 PM - 8:30 PM"
+            // Split on " | " to get morning and evening sessions separately
+            const rawHours = contactStore?.workingHours || '6:00 AM - 12:30 PM | 4:00 PM - 8:30 PM'
+            const parts = rawHours.split('|').map(s => s.trim())
+            const morningSession = parts[0] || '6:00 AM - 12:30 PM'
+            const eveningSession = parts[1] || '4:00 PM - 8:30 PM'
+            return (
+              <div className="flex flex-col gap-4">
+                <h3 className="font-display font-semibold text-lg text-temple-gold tracking-wide relative pb-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-8 after:h-0.5 after:bg-temple-gold">
+                  Daily Hours
+                </h3>
+                <div className="flex flex-col gap-3 text-sm text-white/85">
+                  <div className="flex justify-between border-b border-white/10 pb-1.5">
+                    <span>Morning Darshan:</span>
+                    <span className="font-medium text-temple-gold">{morningSession}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-white/10 pb-1.5">
+                    <span>Evening Darshan:</span>
+                    <span className="font-medium text-temple-gold">{eveningSession}</span>
+                  </div>
+                  <p className="text-xs text-white/60 italic leading-relaxed">
+                    * Note: Timings may vary on major festival days (e.g. Navarathri). Please check the festivals calendar.
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-white/10 pb-1.5">
-                <span>Evening Darshan:</span>
-                <span className="font-medium text-temple-gold">4:00 PM - 8:30 PM</span>
-              </div>
-              <p className="text-xs text-white/60 italic leading-relaxed">
-                * Note: Timings may vary on major festival days (e.g. Navarathri). Please check the festivals calendar.
-              </p>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Contact Details Column */}
           <div className="flex flex-col gap-4">
