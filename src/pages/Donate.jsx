@@ -1,10 +1,22 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Heart, ShieldCheck, Award, Building2, Phone, Sparkles } from 'lucide-react'
+import { Heart, ShieldCheck, Award, Building2, Phone, Sparkles, Copy, Check } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import UpiDonationSection from '../components/common/UpiDonationSection'
+import { useApp, DEFAULT_DONATION_STORE } from '../context/AppContext'
 
 const Donate = () => {
+  const { donationStore } = useApp()
+  const dStore = donationStore || DEFAULT_DONATION_STORE
+
+  const [copiedField, setCopiedField] = React.useState(null)
+
+  const copyToClipboard = (text, fieldName) => {
+    navigator.clipboard.writeText(text)
+    setCopiedField(fieldName)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
+
   return (
     <PageTransition>
       <div className="min-h-screen bg-temple-cream/30 dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex flex-col font-sans transition-colors duration-300">
@@ -47,36 +59,62 @@ const Donate = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
-              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col gap-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">Account Name</span>
-                <span className="font-bold text-gray-900 dark:text-white text-sm">Sree Vasavi Devasthanam Trust</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col justify-between gap-1">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">Account Name</span>
+                  <span className="block font-bold text-gray-900 dark:text-white text-sm mt-0.5">{dStore.accountName || 'Sree Vasavi Devasthanam Trust'}</span>
+                </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col gap-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">Account Number</span>
-                <span className="font-bold text-temple-gold text-sm font-mono tracking-wider">3829 0100 0048 291</span>
+              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col justify-between gap-1 group relative">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">Account Number</span>
+                  <span className="block font-bold text-temple-gold text-sm font-mono tracking-wider mt-0.5">{dStore.accountNumber || '3829 0100 0048 291'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(dStore.accountNumber || '3829 0100 0048 291', 'accountNumber')}
+                  className="self-end mt-2 text-[10px] font-bold text-temple-maroon dark:text-temple-gold hover:underline flex items-center gap-1"
+                >
+                  {copiedField === 'accountNumber' ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedField === 'accountNumber' ? 'Copied' : 'Copy'}</span>
+                </button>
               </div>
 
-              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col gap-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">Bank & Branch</span>
-                <span className="font-bold text-gray-900 dark:text-white text-sm">State Bank of India, Penugonda</span>
+              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col justify-between gap-1">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">Bank & Branch</span>
+                  <span className="block font-bold text-gray-900 dark:text-white text-sm mt-0.5">{dStore.bankName || 'State Bank of India, Penugonda'}</span>
+                </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col gap-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">IFSC Code</span>
-                <span className="font-bold text-temple-maroon dark:text-temple-gold text-sm font-mono tracking-wider">SBIN0002781</span>
+              <div className="p-4 rounded-2xl bg-temple-cream/50 dark:bg-gray-700/40 border border-temple-gold/20 flex flex-col justify-between gap-1">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">IFSC Code</span>
+                  <span className="block font-bold text-temple-maroon dark:text-temple-gold text-sm font-mono tracking-wider mt-0.5">{dStore.ifscCode || 'SBIN0002781'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(dStore.ifscCode || 'SBIN0002781', 'ifscCode')}
+                  className="self-end mt-2 text-[10px] font-bold text-temple-maroon dark:text-temple-gold hover:underline flex items-center gap-1"
+                >
+                  {copiedField === 'ifscCode' ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedField === 'ifscCode' ? 'Copied' : 'Copy'}</span>
+                </button>
               </div>
             </div>
 
             {/* 80G Tax Exemption Note */}
-            <div className="p-4 rounded-2xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 flex items-center gap-3 text-xs text-green-800 dark:text-green-300">
-              <ShieldCheck className="w-6 h-6 shrink-0 text-green-600 dark:text-green-400" />
-              <div>
-                <strong className="block font-bold">Tax Exemption under Section 80G available</strong>
-                <span>All monetary contributions to Penugonda Vasavi Devasthanam Trust are eligible for tax deduction benefits under Section 80G of the Indian Income Tax Act.</span>
+            {dStore.taxExemptionNote && (
+              <div className="p-4 rounded-2xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 flex items-center gap-3 text-xs text-green-800 dark:text-green-300">
+                <ShieldCheck className="w-6 h-6 shrink-0 text-green-600 dark:text-green-400" />
+                <div>
+                  <strong className="block font-bold">Tax Exemption under Section 80G available</strong>
+                  <span>{dStore.taxExemptionNote}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 

@@ -37,6 +37,11 @@
     "upiId": "vasavitemple@ybl",
     "payeeName": "Sree Vasavi Kanyaka Parameswari Devasthanam",
     "presetAmounts": [101, 501, 1008, 2116, 5001, 10008],
-    "customQrUrl": ""
+    "customQrUrl": "",
+    "accountName": "Sree Vasavi Devasthanam Trust",
+    "accountNumber": "3829 0100 0048 291",
+    "bankName": "State Bank of India, Penugonda",
+    "ifscCode": "SBIN0002781",
+    "taxExemptionNote": "All monetary contributions to Penugonda Vasavi Devasthanam Trust are eligible for tax deduction benefits under Section 80G of the Indian Income Tax Act."
   }
 }

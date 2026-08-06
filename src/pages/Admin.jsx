@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Clock, Calendar as CalendarIcon, Image as ImageIcon,
   Bell, Heart, Phone, Moon, Sun, Menu, X, Plus, Edit, Trash2, Search,
   Filter, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle,
-  DollarSign, Users, Eye, EyeOff, Lock, LogOut, ShieldAlert, ShieldCheck, Download, Save, UploadCloud, Link as LinkIcon, FolderPlus, BookOpen, Sparkles, Award, RotateCcw, QrCode
+  DollarSign, Users, Eye, EyeOff, Lock, LogOut, ShieldAlert, ShieldCheck, Download, Save, UploadCloud, Link as LinkIcon, FolderPlus, BookOpen, Sparkles, Award, RotateCcw, QrCode, Building2
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE } from '../context/AppContext'
@@ -2136,6 +2136,77 @@ const Admin = () => {
                       </div>
                     </div>
 
+                    {/* Section 4: Direct Bank Account Details */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4 text-xs md:text-sm">
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-3 flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-temple-gold" />
+                        <h3 className="font-bold text-base text-temple-maroon dark:text-temple-gold">4. Direct Bank Account Details (NEFT / RTGS / IMPS)</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-gray-800 dark:text-white">Account Name / Payee Title *</label>
+                          <input
+                            type="text"
+                            required
+                            value={donationForm.accountName || ''}
+                            onChange={(e) => setDonationForm(prev => ({ ...prev, accountName: e.target.value }))}
+                            placeholder="e.g. Sree Vasavi Devasthanam Trust"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-gray-800 dark:text-white">Account Number *</label>
+                          <input
+                            type="text"
+                            required
+                            value={donationForm.accountNumber || ''}
+                            onChange={(e) => setDonationForm(prev => ({ ...prev, accountNumber: e.target.value }))}
+                            placeholder="e.g. 3829 0100 0048 291"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-gray-800 dark:text-white">Bank & Branch Name *</label>
+                          <input
+                            type="text"
+                            required
+                            value={donationForm.bankName || ''}
+                            onChange={(e) => setDonationForm(prev => ({ ...prev, bankName: e.target.value }))}
+                            placeholder="e.g. State Bank of India, Penugonda"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-gray-800 dark:text-white">IFSC Code *</label>
+                          <input
+                            type="text"
+                            required
+                            value={donationForm.ifscCode || ''}
+                            onChange={(e) => setDonationForm(prev => ({ ...prev, ifscCode: e.target.value }))}
+                            placeholder="e.g. SBIN0002781"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold text-xs uppercase focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-bold text-gray-800 dark:text-white">Section 80G Tax Exemption Note</label>
+                        <textarea
+                          rows={2}
+                          value={donationForm.taxExemptionNote || ''}
+                          onChange={(e) => setDonationForm(prev => ({ ...prev, taxExemptionNote: e.target.value }))}
+                          placeholder="e.g. All monetary contributions to Penugonda Vasavi Devasthanam Trust are eligible for tax deduction benefits under Section 80G..."
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-serif text-xs focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                        />
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="btn-gold !py-3 text-xs uppercase tracking-wider font-bold shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
@@ -2152,7 +2223,7 @@ const Admin = () => {
                       <span className="bg-green-500 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-full animate-pulse">Live Sync</span>
                     </div>
 
-                    {/* Preview Card */}
+                    {/* Preview Card 1: UPI Scanner */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border-2 border-temple-gold/40 shadow-sm flex flex-col items-center gap-3 text-xs text-center">
                       <div className="w-full flex items-center justify-between border-b pb-2">
                         <div className="flex items-center gap-1.5">
@@ -2178,6 +2249,43 @@ const Admin = () => {
                       <div className="w-full py-2.5 rounded-xl bg-[#5f259f] text-white font-bold text-xs uppercase flex items-center justify-center gap-1.5">
                         <span>Donate via PhonePe</span>
                       </div>
+                    </div>
+
+                    {/* Preview Card 2: Direct Bank Transfer */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-3 text-xs">
+                      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <Building2 className="w-4 h-4 text-temple-gold shrink-0" />
+                        <span className="font-bold text-temple-maroon dark:text-temple-gold">Direct Bank Transfer Preview</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase">Account Name</div>
+                          <div className="font-bold text-gray-900 dark:text-white truncate">{donationForm.accountName || 'Sree Vasavi Devasthanam Trust'}</div>
+                        </div>
+
+                        <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase">Account Number</div>
+                          <div className="font-mono font-bold text-temple-gold truncate">{donationForm.accountNumber || '3829 0100 0048 291'}</div>
+                        </div>
+
+                        <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase">Bank & Branch</div>
+                          <div className="font-bold text-gray-900 dark:text-white truncate">{donationForm.bankName || 'State Bank of India, Penugonda'}</div>
+                        </div>
+
+                        <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase">IFSC Code</div>
+                          <div className="font-mono font-bold text-temple-maroon dark:text-temple-gold truncate">{donationForm.ifscCode || 'SBIN0002781'}</div>
+                        </div>
+                      </div>
+
+                      {donationForm.taxExemptionNote && (
+                        <div className="p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl text-[10px] text-green-800 dark:text-green-300 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" />
+                          <span className="line-clamp-2">{donationForm.taxExemptionNote}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
