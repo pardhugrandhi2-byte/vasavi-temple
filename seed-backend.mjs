@@ -41,10 +41,9 @@ const DEFAULT_DATA = {
 
   vasavi_temple_donation: {
     title: 'Sacred E-Donations & Seva (UPI / PhonePe)',
-    subtitle: 'Scan the official temple UPI QR code or tap PhonePe to donate directly',
+    subtitle: 'Scan the official temple UPI QR code or copy UPI ID to donate',
     upiId: 'vasavitemple@ybl',
     payeeName: 'Sree Vasavi Kanyaka Parameswari Devasthanam',
-    presetAmounts: [101, 501, 1008, 2116, 5001, 10008],
     customQrUrl: '',
     accountName: 'Sree Vasavi Devasthanam Trust',
     accountNumber: '3829 0100 0048 291',

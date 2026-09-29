@@ -1943,7 +1943,7 @@ const Admin = () => {
                       UPI & Donations Content Manager
                     </h1>
                     <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 font-serif mt-1">
-                      Configure official temple UPI ID, PhonePe Merchant payee title, preset donation amounts, and custom QR code scanner.
+                      Configure official temple UPI ID, PhonePe Merchant payee title, and custom QR code scanner.
                     </p>
                   </div>
 
@@ -2027,65 +2027,12 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    {/* Section 2: Preset Amounts Manager */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4 text-xs md:text-sm">
-                      <div className="border-b border-gray-100 dark:border-gray-700 pb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-temple-gold" />
-                          <h3 className="font-bold text-base text-temple-maroon dark:text-temple-gold">2. Preset Donation Amounts Manager</h3>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        <label className="font-bold text-gray-800 dark:text-white">Active Preset Amount Pills</label>
-                        <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600">
-                          {(donationForm.presetAmounts || []).map((amt) => (
-                            <span
-                              key={amt}
-                              className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-temple-gold/40 text-temple-maroon dark:text-temple-gold font-mono font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                            >
-                              <span>₹{amt}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemovePresetAmount(amt)}
-                                className="text-red-500 hover:text-red-700 font-bold ml-1"
-                                title="Remove preset amount"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="relative flex-grow">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-temple-gold">₹</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={newPresetAmountInput}
-                              onChange={(e) => setNewPresetAmountInput(e.target.value)}
-                              placeholder="Add new amount (e.g. 2116)..."
-                              className="w-full pl-8 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-temple-gold"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleAddPresetAmount}
-                            className="px-4 py-2 bg-temple-gold text-white font-bold text-xs rounded-xl shadow-sm hover:scale-105 transition-transform flex items-center gap-1 shrink-0"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add Amount
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 3: Custom QR Code Photo Upload */}
+                    {/* Section 2: Custom QR Code Photo Upload */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4 text-xs md:text-sm">
                       <div className="border-b border-gray-100 dark:border-gray-700 pb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <ImageIcon className="w-4 h-4 text-temple-gold" />
-                          <h3 className="font-bold text-base text-temple-maroon dark:text-temple-gold">3. QR Code Scanner Mode</h3>
+                          <h3 className="font-bold text-base text-temple-maroon dark:text-temple-gold">2. QR Code Scanner Mode</h3>
                         </div>
                         {donationForm.customQrUrl && (
                           <button
