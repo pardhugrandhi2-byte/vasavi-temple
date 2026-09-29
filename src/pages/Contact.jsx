@@ -3,9 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Phone, Mail, MapPin, Clock, Send, MessageSquare, Check, Globe, Share2, Navigation, Compass } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import { useApp } from '../context/AppContext'
+import { cleanAndConvertMapsUrl, getMapsShareUrl } from '../utils/mapsHelper'
 
 const Contact = () => {
   const { contactStore } = useApp()
+
+  const embedMapUrl = cleanAndConvertMapsUrl(contactStore?.googleMapsUrl, contactStore?.address)
+  const shareMapUrl = contactStore?.googleMapsShareUrl || getMapsShareUrl(contactStore?.googleMapsUrl, contactStore?.address)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -269,7 +273,7 @@ const Contact = () => {
               <div className="w-full h-64 bg-temple-cream-dark relative overflow-hidden">
                 <iframe
                   title="Sree Vasavi Temple Location"
-                  src={contactStore?.googleMapsUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15291.688320498188!2d81.590124!3d16.634125!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a3628e4e94b5b7b%3A0x6b4a243e88888888!2sPenugonda%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"}
+                  src={embedMapUrl}
                   className="w-full h-full border-0 filter contrast-105"
                   allowFullScreen=""
                   loading="lazy"
@@ -284,7 +288,7 @@ const Contact = () => {
                 </div>
 
                 <a
-                  href="https://maps.google.com/?q=Penugonda+Andhra+Pradesh"
+                  href={shareMapUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-temple-maroon font-bold hover:text-temple-gold transition-colors flex items-center gap-1"

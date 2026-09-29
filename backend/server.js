@@ -50,6 +50,52 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'vasavi-temple-api' })
 })
 
+// GET /api/resolve-map?url=... – Resolves a Google Maps shortlink to embed URL
+app.get('/api/resolve-map', async (req, res) => {
+  const targetUrl = req.query.url
+  if (!targetUrl) {
+    return res.status(400).json({ success: false, message: 'URL query parameter required' })
+  }
+
+  // Pre-configured known shortlink for Sree Vasavi Temple
+  if (targetUrl.includes('Uh59h8TafZxFuwhn9')) {
+    return res.json({
+      success: true,
+      embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3817.752005058017!2d81.8079729!3d16.888158!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a37bd006577cc1b%3A0x72511491942ab40!2z4LC24LGN4LCw4LGAIOCwteCwvuCwuOCwteCwvyDgsJXgsKjgsY3gsK_gsJXgsL4g4LCq4LCw4LCu4LGH4LC24LGN4LC14LCw4LC_IOCwhuCwsuCwr-Cwgg!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin',
+      shareUrl: 'https://maps.app.goo.gl/Uh59h8TafZxFuwhn9',
+      coordinates: { lat: 16.888158, lng: 81.812479 }
+    })
+  }
+
+  try {
+    const response = await fetch(targetUrl, { redirect: 'follow' })
+    const finalUrl = response.url || ''
+
+    const atCoordsMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+    if (atCoordsMatch) {
+      const lat = atCoordsMatch[1]
+      const lng = atCoordsMatch[2]
+      return res.json({
+        success: true,
+        embedUrl: `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=17&output=embed`,
+        shareUrl: finalUrl
+      })
+    }
+
+    res.json({
+      success: true,
+      embedUrl: `https://maps.google.com/maps?q=${encodeURIComponent(finalUrl)}&t=&z=16&ie=UTF8&iwloc=&output=embed`,
+      shareUrl: finalUrl
+    })
+  } catch (err) {
+    res.json({
+      success: false,
+      message: err.message,
+      embedUrl: `https://maps.google.com/maps?q=${encodeURIComponent(targetUrl)}&t=&z=16&ie=UTF8&iwloc=&output=embed`
+    })
+  }
+})
+
 // GET /api/data – Return full temple state
 app.get('/api/data', (req, res) => {
   const data = readData()

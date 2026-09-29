@@ -5,11 +5,13 @@ import {
   LayoutDashboard, Clock, Calendar as CalendarIcon, Image as ImageIcon,
   Bell, Heart, Phone, Moon, Sun, Menu, X, Plus, Edit, Trash2, Search,
   Filter, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle,
-  DollarSign, Users, Eye, EyeOff, Lock, LogOut, ShieldAlert, ShieldCheck, Download, Save, UploadCloud, Link as LinkIcon, FolderPlus, BookOpen, Sparkles, Award, RotateCcw, QrCode, Building2
+  DollarSign, Users, Eye, EyeOff, Lock, LogOut, ShieldAlert, ShieldCheck, Download, Save, UploadCloud, Link as LinkIcon, FolderPlus, BookOpen, Sparkles, Award, RotateCcw, QrCode, Building2,
+  MapPin, ExternalLink, Navigation, Compass
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE } from '../context/AppContext'
 import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig } from '../services/db'
+import { cleanAndConvertMapsUrl, getMapsShareUrl, generateEmbedFromAddress, DEFAULT_TEMPLE_LOCATION } from '../utils/mapsHelper'
 
 // Scrollable time picker options
 const TIME_OPTIONS = [
@@ -486,7 +488,8 @@ const Admin = () => {
     email: 'contact@vasavitemple.org',
     workingHours: '6:00 AM - 12:30 PM | 4:00 PM - 8:30 PM',
     address: 'Main Bazar Road, Sree Vasavi Sanctum Complex, Penugonda, Andhra Pradesh, India.',
-    googleMapsUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15291.688320498188!2d81.590124!3d16.634125!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a3628e4e94b5b7b%3A0x6b4a243e88888888!2sPenugonda%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin',
+    googleMapsUrl: DEFAULT_TEMPLE_LOCATION.embedUrl,
+    googleMapsShareUrl: DEFAULT_TEMPLE_LOCATION.shortUrl,
     youtubeUrl: 'https://youtube.com',
     facebookUrl: 'https://facebook.com',
     instagramUrl: 'https://instagram.com',
@@ -501,10 +504,18 @@ const Admin = () => {
 
   const handleSaveContactDetails = (e) => {
     e.preventDefault()
-    if (updateContactStore) {
-      updateContactStore(contactForm)
+    const cleanEmbedUrl = cleanAndConvertMapsUrl(contactForm.googleMapsUrl, contactForm.address)
+    const shareUrl = contactForm.googleMapsShareUrl || getMapsShareUrl(contactForm.googleMapsUrl, contactForm.address)
+    const payload = {
+      ...contactForm,
+      googleMapsUrl: cleanEmbedUrl,
+      googleMapsShareUrl: shareUrl
     }
-    showToast('Temple contact details updated & published live!')
+    if (updateContactStore) {
+      updateContactStore(payload)
+    }
+    setContactForm(payload)
+    showToast('Temple contact details & map location updated live!')
   }
 
   // Cloud DB Configuration State
@@ -1434,7 +1445,30 @@ const Admin = () => {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="font-bold text-gray-800 dark:text-white">Temple Postal Address</label>
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-gray-800 dark:text-white">Temple Postal Address</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (contactForm.address && contactForm.address.trim()) {
+                              const autoEmbed = generateEmbedFromAddress(contactForm.address)
+                              const autoShare = getMapsShareUrl('', contactForm.address)
+                              setContactForm(prev => ({
+                                ...prev,
+                                googleMapsUrl: autoEmbed,
+                                googleMapsShareUrl: autoShare
+                              }))
+                              showToast('Google Map generated from temple postal address!')
+                            } else {
+                              showToast('Please type a temple address first!')
+                            }
+                          }}
+                          className="text-[11px] font-bold text-temple-maroon dark:text-temple-gold hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Navigation className="w-3 h-3 text-temple-gold" />
+                          <span>Generate Map from Address</span>
+                        </button>
+                      </div>
                       <textarea
                         rows="3"
                         required
@@ -1445,16 +1479,60 @@ const Admin = () => {
                       ></textarea>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="font-bold text-gray-800 dark:text-white">Google Maps Embed Iframe URL</label>
-                      <input
-                        type="text"
-                        required
-                        value={contactForm.googleMapsUrl}
-                        onChange={(e) => setContactForm(prev => ({ ...prev, googleMapsUrl: e.target.value }))}
-                        placeholder="https://www.google.com/maps/embed?..."
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-temple-gold truncate shadow-sm"
-                      />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-gray-800 dark:text-white flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-temple-gold" />
+                          <span>Google Maps Location (Share Link / Embed / Coordinates)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContactForm(prev => ({
+                              ...prev,
+                              googleMapsUrl: DEFAULT_TEMPLE_LOCATION.embedUrl,
+                              googleMapsShareUrl: DEFAULT_TEMPLE_LOCATION.shortUrl
+                            }))
+                            showToast('Set to Sree Vasavi Temple Location (maps.app.goo.gl/Uh59h8TafZxFuwhn9)!')
+                          }}
+                          className="text-[11px] font-bold text-temple-gold hover:underline flex items-center gap-1 bg-temple-gold/10 px-2 py-0.5 rounded-md cursor-pointer"
+                        >
+                          <span>Use Temple Map (Uh59h8TafZxFuwhn9)</span>
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={contactForm.googleMapsUrl}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const converted = cleanAndConvertMapsUrl(val, contactForm.address)
+                            const share = val.includes('maps.app.goo.gl') || val.includes('goo.gl/maps')
+                              ? val.trim()
+                              : getMapsShareUrl(val, contactForm.address)
+                            setContactForm(prev => ({
+                              ...prev,
+                              googleMapsUrl: converted,
+                              googleMapsShareUrl: share
+                            }))
+                          }}
+                          placeholder="Paste https://maps.app.goo.gl/..., iframe code, or address"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                        <span className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Auto-converts share links &amp; addresses to working embed iframe
+                        </span>
+                        {contactForm.googleMapsUrl?.includes('Uh59h8TafZxFuwhn9') || contactForm.googleMapsUrl?.includes('0x3a37bd006577cc1b') ? (
+                          <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            🛕 Sree Vasavi Temple Verified GPS Active
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* Social Media Channels Section */}
@@ -1562,18 +1640,47 @@ const Admin = () => {
                     </div>
 
                     {/* Live Maps Preview */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700 text-xs font-bold text-gray-800 dark:text-white">
-                        Map Embed Preview
-                      </div>
-                      <div className="w-full h-44 bg-gray-100 dark:bg-gray-900">
-                        <iframe
-                          title="Preview Map"
-                          src={contactForm.googleMapsUrl}
-                          className="w-full h-full border-0 pointer-events-none"
-                        ></iframe>
-                      </div>
-                    </div>
+                    {(() => {
+                      const previewEmbedUrl = cleanAndConvertMapsUrl(contactForm.googleMapsUrl, contactForm.address)
+                      const previewShareUrl = contactForm.googleMapsShareUrl || getMapsShareUrl(contactForm.googleMapsUrl, contactForm.address)
+                      return (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-700 flex items-center justify-between text-xs font-bold text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-temple-gold" />
+                              <span>Live Map Embed Preview</span>
+                            </div>
+                            <a
+                              href={previewShareUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-temple-maroon dark:text-temple-gold hover:underline flex items-center gap-1 font-semibold text-[11px]"
+                            >
+                              <span>Test Google Maps</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                          <div className="w-full h-52 bg-gray-100 dark:bg-gray-900 relative">
+                            <iframe
+                              key={previewEmbedUrl}
+                              title="Preview Map"
+                              src={previewEmbedUrl}
+                              className="w-full h-full border-0"
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                            ></iframe>
+                          </div>
+                          <div className="p-2.5 bg-gray-50 dark:bg-gray-700/50 text-[11px] text-gray-600 dark:text-gray-300 flex items-center justify-between border-t border-gray-100 dark:border-gray-700">
+                            <span className="truncate max-w-[260px] font-serif">
+                              📍 {contactForm.address ? contactForm.address.slice(0, 40) + '...' : 'Sree Vasavi Kshetram'}
+                            </span>
+                            <span className="text-green-600 dark:text-green-400 font-bold shrink-0">
+                              ✓ Embed Ready
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
