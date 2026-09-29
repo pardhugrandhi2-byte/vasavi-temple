@@ -273,7 +273,7 @@ const Admin = () => {
   // Navigation & Theme State
   const [activeTab, setActiveTab] = useState('dashboard')
   const [darkMode, setDarkMode] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true)
 
   // Donation Settings Form State
   const [donationForm, setDonationForm] = useState(() => donationStore || DEFAULT_DONATION_STORE)
@@ -944,27 +944,40 @@ const Admin = () => {
         </AnimatePresence>
 
         {/* Admin Topbar Header */}
-        <header className={`h-16 border-b px-6 flex items-center justify-between sticky top-0 z-30 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
-          }`}>
-          <div className="flex items-center gap-4">
+        <header className={`h-16 border-b px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 ${
+          darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+        }`}>
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0"
+              aria-label="Toggle navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-6 h-6 text-temple-gold" />
-              <span className="font-display font-bold text-lg text-temple-maroon dark:text-temple-gold">
-                Sree Vasavi Admin Portal
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-temple-gold shrink-0" />
+              <span className="font-display font-bold text-sm sm:text-base md:text-lg text-temple-maroon dark:text-temple-gold truncate">
+                Sree Vasavi Admin
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Emergency Status Pill */}
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${emergencyClosed ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'
-              }`}>
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Live Website Link */}
+            <Link
+              to="/"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-temple-gold/10 hover:bg-temple-gold/20 text-temple-maroon dark:text-temple-gold font-bold text-xs border border-temple-gold/30 transition-all hover:scale-105"
+              title="Return to Public Website"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Live Website</span>
+            </Link>
+
+            {/* Emergency Status Pill (Desktop only for space) */}
+            <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+              emergencyClosed ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'
+            }`}>
               <span className={`w-2 h-2 rounded-full ${emergencyClosed ? 'bg-red-500 animate-ping' : 'bg-green-500'}`}></span>
               <span>{emergencyClosed ? 'CLOSED OVERRIDE ACTIVE' : 'SYSTEM NORMAL'}</span>
             </div>
@@ -975,27 +988,37 @@ const Admin = () => {
               className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:scale-105 transition-all"
               title="Toggle Dark Mode"
             >
-              {darkMode ? <Sun className="w-5 h-5 text-temple-gold" /> : <Moon className="w-5 h-5" />}
+              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-temple-gold" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
 
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold text-xs border border-red-500/20 transition-all hover:scale-105"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold text-xs border border-red-500/20 transition-all hover:scale-105"
               title="Sign Out of Admin Portal"
             >
               <LogOut className="w-4 h-4" />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>
 
         {/* Dashboard Shell Layout */}
         <div className="flex flex-grow relative overflow-hidden">
+          {/* Mobile Sidebar Backdrop */}
+          {sidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+
           {/* Sidebar Navigation */}
-          <aside className={`${sidebarOpen ? 'w-64' : 'w-20'
-            } border-r transition-all duration-300 flex flex-col shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            }`}>
+          <aside className={`
+            ${sidebarOpen ? 'w-64 fixed lg:static z-40 inset-y-0 left-0 shadow-2xl lg:shadow-none' : 'w-0 -translate-x-full lg:translate-x-0 lg:w-20'}
+            border-r transition-all duration-300 flex flex-col shrink-0 overflow-y-auto
+            ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+          `}>
             <div className="p-4 flex flex-col gap-1 flex-grow">
               {navItems.map(item => {
                 const Icon = item.icon
@@ -1003,7 +1026,10 @@ const Admin = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => {
+                      setActiveTab(item.id)
+                      if (window.innerWidth < 1024) setSidebarOpen(false)
+                    }}
                     className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${isActive
                         ? 'bg-gradient-to-r from-temple-maroon to-temple-maroon-dark text-white shadow-md'
                         : darkMode
