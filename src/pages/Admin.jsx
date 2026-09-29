@@ -9,7 +9,7 @@ import {
   MapPin, ExternalLink, Navigation, Compass
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
-import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE } from '../context/AppContext'
+import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE, INITIAL_FESTIVALS, INITIAL_ANNOUNCEMENTS } from '../context/AppContext'
 import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig } from '../services/db'
 import { cleanAndConvertMapsUrl, getMapsShareUrl, generateEmbedFromAddress, DEFAULT_TEMPLE_LOCATION } from '../utils/mapsHelper'
 
@@ -230,7 +230,7 @@ export const DEFAULT_ADMIN_CREDENTIALS = {
 }
 
 const Admin = () => {
-  const { scheduleStore, updateScheduleStore, galleryStore, updateGalleryStore, contactStore, updateContactStore, aboutStore, updateAboutStore, donationStore, updateDonationStore } = useApp()
+  const { scheduleStore, updateScheduleStore, galleryStore, updateGalleryStore, contactStore, updateContactStore, aboutStore, updateAboutStore, donationStore, updateDonationStore, festivalsStore, updateFestivalsStore, noticesStore, updateNoticesStore } = useApp()
 
   // Security Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -363,21 +363,25 @@ const Admin = () => {
 
   // Datasets State (CRUD)
   const [specialTimings, setSpecialTimings] = useState(MOCK_SPECIAL_TIMINGS)
-  const [festivals, setFestivals] = useState(() => loadCloudData(STORAGE_KEYS.FESTIVALS, MOCK_FESTIVALS))
+  // Festivals & notices are sourced from AppContext (synced to backend via updateFestivalsStore/updateNoticesStore)
+  const [festivals, setFestivals] = useState(() => (festivalsStore && festivalsStore.length > 0 ? festivalsStore : INITIAL_FESTIVALS))
   const [gallery, setGallery] = useState(() => galleryStore || MOCK_GALLERY)
-  const [notices, setNotices] = useState(() => loadCloudData(STORAGE_KEYS.NOTICES, INITIAL_ANNOUNCEMENTS))
+  const [notices, setNotices] = useState(() => (noticesStore && noticesStore.length > 0 ? noticesStore : INITIAL_ANNOUNCEMENTS))
   const [activeNoticeCategory, setActiveNoticeCategory] = useState('All')
 
+  // Keep local state in sync when AppContext updates (e.g. on initial backend load)
   useEffect(() => {
-    saveCloudData(STORAGE_KEYS.NOTICES, notices)
-  }, [notices])
+    if (festivalsStore && festivalsStore.length > 0) setFestivals(festivalsStore)
+  }, [festivalsStore])
 
   useEffect(() => {
-    saveCloudData(STORAGE_KEYS.FESTIVALS, festivals)
-  }, [festivals])
+    if (noticesStore && noticesStore.length > 0) setNotices(noticesStore)
+  }, [noticesStore])
 
   const toggleNoticeReadStatus = (id) => {
-    setNotices(prev => prev.map(n => n.id === id ? { ...n, isUnread: !n.isUnread } : n))
+    const updated = notices.map(n => n.id === id ? { ...n, isUnread: !n.isUnread } : n)
+    setNotices(updated)
+    updateNoticesStore(updated)
   }
 
   // About Page Details Form State
@@ -683,10 +687,14 @@ const Admin = () => {
       syncSpecialTimingsToStore(updated)
       showToast('Special timing override deleted.')
     } else if (type === 'festival') {
-      setFestivals(prev => prev.filter(item => item.id !== id))
+      const updated = festivals.filter(item => item.id !== id)
+      setFestivals(updated)
+      updateFestivalsStore(updated)
       showToast('Festival record deleted.')
     } else if (type === 'notice') {
-      setNotices(prev => prev.filter(item => item.id !== id))
+      const updated = notices.filter(item => item.id !== id)
+      setNotices(updated)
+      updateNoticesStore(updated)
       showToast('Announcement deleted.')
     } else if (type === 'gallery') {
       const updated = gallery.filter(item => item.id !== id)
@@ -752,21 +760,27 @@ const Admin = () => {
       setSpecialTimings(updatedList)
       syncSpecialTimingsToStore(updatedList)
     } else if (modalType === 'festival') {
+      let updatedFestivals
       if (formData.id) {
-        setFestivals(prev => prev.map(f => f.id === formData.id ? formData : f))
-        showToast('Festival details updated.')
+        updatedFestivals = festivals.map(f => f.id === formData.id ? formData : f)
+        showToast('Festival details updated & published live!')
       } else {
-        setFestivals(prev => [{ ...formData, id: `f_${Date.now()}` }, ...prev])
-        showToast('New Festival added successfully.')
+        updatedFestivals = [{ ...formData, id: `f_${Date.now()}` }, ...festivals]
+        showToast('New Festival added & published live!')
       }
+      setFestivals(updatedFestivals)
+      updateFestivalsStore(updatedFestivals)
     } else if (modalType === 'notice') {
+      let updatedNotices
       if (formData.id) {
-        setNotices(prev => prev.map(n => n.id === formData.id ? formData : n))
-        showToast('Announcement updated.')
+        updatedNotices = notices.map(n => n.id === formData.id ? formData : n)
+        showToast('Announcement updated & published live!')
       } else {
-        setNotices(prev => [{ ...formData, id: Date.now().toString() }, ...prev])
-        showToast('New Announcement published.')
+        updatedNotices = [{ ...formData, id: Date.now().toString() }, ...notices]
+        showToast('New Announcement published live!')
       }
+      setNotices(updatedNotices)
+      updateNoticesStore(updatedNotices)
     } else if (modalType === 'gallery') {
       if (!formData.image || !formData.image.trim()) {
         showToast('Please select an image file from your device or paste an image URL.')

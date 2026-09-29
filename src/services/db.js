@@ -4,9 +4,9 @@
 // No localStorage used for data — all reads/writes go to the backend.
 // ============================================================
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
-  : null
+const DEFAULT_BACKEND_URL = 'https://vasavi-temple-kadiyapulanka.onrender.com'
+const BACKEND_URL = (import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL).trim()
+const API_BASE = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : null
 
 // Storage keys — used as property names in the backend data.json
 export const STORAGE_KEYS = {
@@ -60,12 +60,12 @@ const apiFetch = async (path, options = {}) => {
 export const getCloudConfig = () => ({
   provider: API_BASE ? 'Render REST API' : 'Default Values (No backend)',
   status:   API_BASE ? 'Connected' : 'Not configured',
-  endpointUrl: API_BASE ? import.meta.env.VITE_API_URL : '',
+  endpointUrl: BACKEND_URL,
   apiKey:   '',
   autoSync: true
 })
 
-// No-op: cloud config is set via .env.local, not runtime
+// No-op: cloud config is set via env / default constant
 export const saveCloudConfig = (_config) => {}
 
 // ── FETCH all data from backend ───────────────────────────────────────────────
@@ -73,11 +73,11 @@ export const saveCloudConfig = (_config) => {}
  * Fetches all temple data from the Render backend.
  * Called on app startup by AppContext.
  * Notifies all subscribers (AppContext) so React state is updated.
- * Returns the full data payload or null if backend is unreachable.
+ * Also caches to localStorage for instant subsequent loads.
  */
 export const fetchRemoteCloudData = async () => {
   if (!API_BASE) {
-    console.info('[API] No backend URL configured — using default values.')
+    console.info('[API] No backend URL configured — using default / cached values.')
     return null
   }
 
@@ -90,26 +90,43 @@ export const fetchRemoteCloudData = async () => {
   const payload = result.data
   const keys = Object.keys(payload).filter(k => payload[k] !== undefined && payload[k] !== null)
 
-  // Push each key into AppContext via pub/sub
-  keys.forEach(key => notifyListeners({ key, data: payload[key] }))
+  // Cache to localStorage and push each key into AppContext via pub/sub
+  keys.forEach(key => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, JSON.stringify(payload[key]))
+      }
+    } catch (e) {
+      // quota or private browsing issue
+    }
+    notifyListeners({ key, data: payload[key] })
+  })
 
   console.log(`[API] ✓ Loaded ${keys.length} stores from backend:`, keys.join(', '))
   return payload
 }
 
-// ── SAVE a single key to backend ─────────────────────────────────────────────
+// ── SAVE a single key to backend & localStorage ─────────────────────────────
 /**
- * Saves a key-value pair to the Render backend.
+ * Saves a key-value pair to localStorage (instant persistence) and the Render backend.
  * Also immediately notifies subscribers so React state updates without waiting.
- * NO localStorage is used.
  */
 export const saveCloudData = async (key, data) => {
-  // Immediately update in-memory React state (instant UI update)
+  // 1. Immediately cache in localStorage
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(key, JSON.stringify(data))
+    }
+  } catch (e) {
+    console.warn(`[Storage] Failed to cache ${key} to localStorage:`, e)
+  }
+
+  // 2. Immediately update in-memory React state (instant UI update)
   notifyListeners({ key, data })
 
   if (!API_BASE) {
-    console.warn('[API] No backend configured. Data only in React state (will reset on refresh).')
-    return { success: false, error: 'No backend URL configured' }
+    console.warn('[API] No backend URL configured — saved to localStorage only.')
+    return { success: true }
   }
 
   try {
@@ -132,9 +149,21 @@ export const saveCloudData = async (key, data) => {
   }
 }
 
-// ── LOAD (no-op — kept for compatibility) ─────────────────────────────────────
+// ── LOAD from localStorage with fallback ─────────────────────────────────────
 /**
- * Returns the fallback directly — backend data is loaded asynchronously
- * via fetchRemoteCloudData() on app mount, not synchronously here.
+ * Returns locally cached data from localStorage if available, otherwise returns fallback.
+ * Backend data is subsequently fetched asynchronously via fetchRemoteCloudData().
  */
-export const loadCloudData = (_key, fallback) => fallback
+export const loadCloudData = (key, fallback) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    }
+  } catch (e) {
+    console.warn(`[Storage] Failed to read ${key} from localStorage:`, e)
+  }
+  return fallback
+}

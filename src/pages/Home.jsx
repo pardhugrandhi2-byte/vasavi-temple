@@ -4,8 +4,7 @@ import { motion } from 'framer-motion'
 import { Clock, Phone, Calendar, ArrowRight, Heart } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import UpiDonationSection from '../components/common/UpiDonationSection'
-import { useApp } from '../context/AppContext'
-import { loadCloudData, subscribeToCloud, STORAGE_KEYS } from '../services/db'
+import { useApp, INITIAL_ANNOUNCEMENTS } from '../context/AppContext'
 
 // Temple building hero image served from /public/temple-hero.jpg (copied by vite.config.js at startup)
 const HERO_BG_FALLBACK = '/temple-hero.jpg'
@@ -26,43 +25,8 @@ const floatingLights = Array.from({ length: 15 }).map((_, i) => {
   }
 })
 
-const INITIAL_ANNOUNCEMENTS = [
-  {
-    id: '1',
-    title: 'Sravana Shukravaram Special Abhishekam',
-    category: 'Poojas',
-    date: '2026-08-07',
-    description: 'Special Kumkumarchana and Laksha Bilwarchana will be performed on Friday from 6:00 AM onwards.',
-    isUnread: true
-  },
-  {
-    id: '2',
-    title: 'Extended Darshan Hours during Sri Krishna Janmashtami',
-    category: 'Timings',
-    date: '2026-08-15',
-    description: 'Temple sanctum will remain open continuously until midnight for special Utsavam.',
-    isUnread: true
-  },
-  {
-    id: '3',
-    title: 'Annadanam Hall Expansion Construction Progress',
-    category: 'Facilities',
-    date: '2026-08-01',
-    description: 'The new multi-purpose dining hall expansion is progressing well to serve 5,000 pilgrims daily.',
-    isUnread: false
-  },
-  {
-    id: '4',
-    title: 'Online Slot Booking Advisory',
-    category: 'Alert',
-    date: '2026-07-28',
-    description: 'Please carry e-ticket barcode printout or mobile copy along with government ID proof for fast-track entry.',
-    isUnread: false
-  }
-]
-
 const Home = () => {
-  const { scheduleJSON } = useApp()
+  const { scheduleJSON, noticesStore } = useApp()
   const heroImageSrc = HERO_BG_FALLBACK
 
   const [timeStatus, setTimeStatus] = useState({
@@ -73,16 +37,15 @@ const Home = () => {
   })
 
   const [announcements, setAnnouncements] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.NOTICES, INITIAL_ANNOUNCEMENTS)
+    return noticesStore && noticesStore.length > 0 ? noticesStore : INITIAL_ANNOUNCEMENTS
   })
   const [activeNoticeCategory, setActiveNoticeCategory] = useState('All')
 
   useEffect(() => {
-    const unsubscribe = subscribeToCloud(({ key, data }) => {
-      if (key === STORAGE_KEYS.NOTICES) setAnnouncements(data)
-    })
-    return () => unsubscribe()
-  }, [])
+    if (noticesStore && noticesStore.length > 0) {
+      setAnnouncements(noticesStore)
+    }
+  }, [noticesStore])
 
   const toggleReadStatus = (id) => {
     setAnnouncements(prev => prev.map(notice => 

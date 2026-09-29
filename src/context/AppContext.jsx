@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { calculateTempleStatus, DEFAULT_SCHEDULE_STORE } from '../utils/scheduler'
 import {
   saveCloudData,
+  loadCloudData,
   fetchRemoteCloudData,
   subscribeToCloud,
   STORAGE_KEYS
@@ -10,6 +11,94 @@ import {
 const AppContext = createContext(undefined)
 
 // ── Default / Seed Data ───────────────────────────────────────────────────────
+
+export const INITIAL_FESTIVALS = [
+  {
+    id: 'f1',
+    name: 'Varalakshmi Vratam Special',
+    date: '2026-07-31',
+    morningTiming: '04:30 AM - 01:30 PM',
+    eveningTiming: '03:30 PM - 10:30 PM',
+    description: 'Grand celebrations dedicated to Goddess Varalakshmi with special Alankaram, Suvasini Pooja, and sacred Kumkumarchana for family prosperity.',
+    image: 'https://images.unsplash.com/photo-1602613977505-11996517af5e?auto=format&fit=crop&w=800&q=80',
+    category: 'Major Vratam'
+  },
+  {
+    id: 'f2',
+    name: 'Sri Krishna Janmashtami',
+    date: '2026-08-15',
+    morningTiming: '05:00 AM - 01:00 PM',
+    eveningTiming: '04:00 PM - 11:30 PM',
+    description: 'Special midnight Abhishekam, butter offerings, devotional bhajan sangeet, and grand Utlotsavam (Dahi Handi) celebrations.',
+    image: 'https://images.unsplash.com/photo-1609137144813-7d722d56a2cb?auto=format&fit=crop&w=800&q=80',
+    category: 'Deity Utsavam'
+  },
+  {
+    id: 'f3',
+    name: 'Ganesh Chaturthi',
+    date: '2026-08-25',
+    morningTiming: '05:00 AM - 02:00 PM',
+    eveningTiming: '04:00 PM - 10:00 PM',
+    description: 'Installation of eco-friendly Ganesha idol, special Modak offerings, daily Sahasranama Archana, and cultural performances.',
+    image: 'https://images.unsplash.com/photo-1617135671158-989e51b4e868?auto=format&fit=crop&w=800&q=80',
+    category: 'Grand Festival'
+  },
+  {
+    id: 'f4',
+    name: 'Sharad Navarathri Celebrations',
+    date: '2026-10-11',
+    morningTiming: '04:00 AM - 02:00 PM',
+    eveningTiming: '03:00 PM - 11:00 PM',
+    description: '9-day grand celebrations featuring 9 distinct daily Alankarams of Sree Vasavi Kanyaka Parameswari Devi, Chandi Homam, and Vijayadasami.',
+    image: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=800&q=80',
+    category: 'Grand Festival'
+  },
+  {
+    id: 'f5',
+    name: 'Deepavali Light Utsavam',
+    date: '2026-11-08',
+    morningTiming: '05:00 AM - 01:00 PM',
+    eveningTiming: '04:30 PM - 10:30 PM',
+    description: 'Festival of Lights celebrations with Kedareswara Vratam, Lakshmi Pooja, and thousands of oil lamps illuminating the temple sanctum.',
+    image: 'https://images.unsplash.com/photo-1608958416713-ef377227443e?auto=format&fit=crop&w=800&q=80',
+    category: 'Light Utsavam'
+  }
+]
+
+export const INITIAL_ANNOUNCEMENTS = [
+  {
+    id: '1',
+    title: 'Sravana Shukravaram Special Abhishekam',
+    category: 'Poojas',
+    date: '2026-08-07',
+    description: 'Special Kumkumarchana and Laksha Bilwarchana will be performed on Friday from 6:00 AM onwards.',
+    isUnread: true
+  },
+  {
+    id: '2',
+    title: 'Extended Darshan Hours during Sri Krishna Janmashtami',
+    category: 'Timings',
+    date: '2026-08-15',
+    description: 'Temple sanctum will remain open continuously until midnight for special Utsavam.',
+    isUnread: true
+  },
+  {
+    id: '3',
+    title: 'Annadanam Hall Expansion Construction Progress',
+    category: 'Facilities',
+    date: '2026-08-01',
+    description: 'The new multi-purpose dining hall expansion is progressing well to serve 5,000 pilgrims daily.',
+    isUnread: false
+  },
+  {
+    id: '4',
+    title: 'Online Slot Booking Advisory',
+    category: 'Alert',
+    date: '2026-07-28',
+    description: 'Please carry e-ticket barcode printout or mobile copy along with government ID proof for fast-track entry.',
+    isUnread: false
+  }
+]
 
 export const INITIAL_GALLERY_ITEMS = [
   {
@@ -174,12 +263,14 @@ export const AppProvider = ({ children }) => {
 
   const [visitorCount] = useState(120485)
 
-  // All data stores — initialized with defaults, populated from backend on mount
-  const [galleryStore, setGalleryStore] = useState(INITIAL_GALLERY_ITEMS)
-  const [contactStore, setContactStore] = useState(DEFAULT_CONTACT_DETAILS)
-  const [aboutStore, setAboutStore] = useState(DEFAULT_ABOUT_DETAILS)
-  const [donationStore, setDonationStore] = useState(DEFAULT_DONATION_STORE)
-  const [scheduleStore, setScheduleStore] = useState(DEFAULT_SCHEDULE_STORE)
+  // All data stores — initialized from localStorage cache if available, populated from backend on mount
+  const [galleryStore, setGalleryStore] = useState(() => loadCloudData(STORAGE_KEYS.GALLERY, INITIAL_GALLERY_ITEMS))
+  const [contactStore, setContactStore] = useState(() => loadCloudData(STORAGE_KEYS.CONTACT, DEFAULT_CONTACT_DETAILS))
+  const [aboutStore, setAboutStore] = useState(() => loadCloudData(STORAGE_KEYS.ABOUT, DEFAULT_ABOUT_DETAILS))
+  const [donationStore, setDonationStore] = useState(() => loadCloudData(STORAGE_KEYS.DONATION, DEFAULT_DONATION_STORE))
+  const [scheduleStore, setScheduleStore] = useState(() => loadCloudData(STORAGE_KEYS.SCHEDULE, DEFAULT_SCHEDULE_STORE))
+  const [festivalsStore, setFestivalsStore] = useState(() => loadCloudData(STORAGE_KEYS.FESTIVALS, INITIAL_FESTIVALS))
+  const [noticesStore, setNoticesStore] = useState(() => loadCloudData(STORAGE_KEYS.NOTICES, INITIAL_ANNOUNCEMENTS))
   const [scheduleJSON, setScheduleJSON] = useState(() => calculateTempleStatus(new Date(), DEFAULT_SCHEDULE_STORE))
 
   // Track whether backend data has loaded (to avoid flash of stale default content)
@@ -192,11 +283,13 @@ export const AppProvider = ({ children }) => {
         // If backend returned data, update states directly here as a safety net
         // (subscribeToCloud below also handles it — this is for initial load)
         if (data) {
-          if (data[STORAGE_KEYS.GALLERY])  setGalleryStore(data[STORAGE_KEYS.GALLERY])
-          if (data[STORAGE_KEYS.CONTACT])  setContactStore(data[STORAGE_KEYS.CONTACT])
-          if (data[STORAGE_KEYS.ABOUT])    setAboutStore(data[STORAGE_KEYS.ABOUT])
-          if (data[STORAGE_KEYS.DONATION]) setDonationStore(data[STORAGE_KEYS.DONATION])
-          if (data[STORAGE_KEYS.SCHEDULE]) setScheduleStore(data[STORAGE_KEYS.SCHEDULE])
+          if (data[STORAGE_KEYS.GALLERY])   setGalleryStore(data[STORAGE_KEYS.GALLERY])
+          if (data[STORAGE_KEYS.CONTACT])   setContactStore(data[STORAGE_KEYS.CONTACT])
+          if (data[STORAGE_KEYS.ABOUT])     setAboutStore(data[STORAGE_KEYS.ABOUT])
+          if (data[STORAGE_KEYS.DONATION])  setDonationStore(data[STORAGE_KEYS.DONATION])
+          if (data[STORAGE_KEYS.SCHEDULE])  setScheduleStore(data[STORAGE_KEYS.SCHEDULE])
+          if (data[STORAGE_KEYS.FESTIVALS]) setFestivalsStore(data[STORAGE_KEYS.FESTIVALS])
+          if (data[STORAGE_KEYS.NOTICES])   setNoticesStore(data[STORAGE_KEYS.NOTICES])
         }
         setIsDataLoaded(true)
       })
@@ -207,11 +300,13 @@ export const AppProvider = ({ children }) => {
   // When Admin saves (saveCloudData), it notifies listeners → state updates instantly
   useEffect(() => {
     const unsubscribe = subscribeToCloud(({ key, data }) => {
-      if (key === STORAGE_KEYS.GALLERY)  setGalleryStore(data)
-      if (key === STORAGE_KEYS.CONTACT)  setContactStore(data)
-      if (key === STORAGE_KEYS.ABOUT)    setAboutStore(data)
-      if (key === STORAGE_KEYS.DONATION) setDonationStore(data)
-      if (key === STORAGE_KEYS.SCHEDULE) setScheduleStore(data)
+      if (key === STORAGE_KEYS.GALLERY)   setGalleryStore(data)
+      if (key === STORAGE_KEYS.CONTACT)   setContactStore(data)
+      if (key === STORAGE_KEYS.ABOUT)     setAboutStore(data)
+      if (key === STORAGE_KEYS.DONATION)  setDonationStore(data)
+      if (key === STORAGE_KEYS.SCHEDULE)  setScheduleStore(data)
+      if (key === STORAGE_KEYS.FESTIVALS) setFestivalsStore(data)
+      if (key === STORAGE_KEYS.NOTICES)   setNoticesStore(data)
     })
     return () => unsubscribe()
   }, [])
@@ -261,6 +356,16 @@ export const AppProvider = ({ children }) => {
     saveCloudData(STORAGE_KEYS.SCHEDULE, newStore)
   }
 
+  const updateFestivalsStore = (newFestivals) => {
+    setFestivalsStore(newFestivals)
+    saveCloudData(STORAGE_KEYS.FESTIVALS, newFestivals)
+  }
+
+  const updateNoticesStore = (newNotices) => {
+    setNoticesStore(newNotices)
+    saveCloudData(STORAGE_KEYS.NOTICES, newNotices)
+  }
+
   const dismissNotification = () => setActiveNotification(prev => ({ ...prev, show: false }))
   const changeLanguage = (lang) => setLanguage(lang)
 
@@ -282,6 +387,10 @@ export const AppProvider = ({ children }) => {
       updateAboutStore,
       donationStore,
       updateDonationStore,
+      festivalsStore,
+      updateFestivalsStore,
+      noticesStore,
+      updateNoticesStore,
       isDataLoaded
     }}>
       {children}

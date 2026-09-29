@@ -2,76 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, Plus, Sparkles, X, Check, Search, AlertCircle } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
-import { loadCloudData, subscribeToCloud, STORAGE_KEYS } from '../services/db'
-
-// Initial Festival Data (Dates set in 2026 matching current timeline)
-const INITIAL_FESTIVALS = [
-  {
-    id: 'f1',
-    name: 'Varalakshmi Vratam Special',
-    date: '2026-07-31',
-    morningTiming: '04:30 AM - 01:30 PM',
-    eveningTiming: '03:30 PM - 10:30 PM',
-    description: 'Grand celebrations dedicated to Goddess Varalakshmi with special Alankaram, Suvasini Pooja, and sacred Kumkumarchana for family prosperity.',
-    image: 'https://images.unsplash.com/photo-1602613977505-11996517af5e?auto=format&fit=crop&w=800&q=80',
-    category: 'Major Vratam'
-  },
-  {
-    id: 'f2',
-    name: 'Sri Krishna Janmashtami',
-    date: '2026-08-15',
-    morningTiming: '05:00 AM - 01:00 PM',
-    eveningTiming: '04:00 PM - 11:30 PM',
-    description: 'Special midnight Abhishekam, butter offerings, devotional bhajan sangeet, and grand Utlotsavam (Dahi Handi) celebrations.',
-    image: 'https://images.unsplash.com/photo-1609137144813-7d722d56a2cb?auto=format&fit=crop&w=800&q=80',
-    category: 'Deity Utsavam'
-  },
-  {
-    id: 'f3',
-    name: 'Ganesh Chaturthi',
-    date: '2026-08-25',
-    morningTiming: '05:00 AM - 02:00 PM',
-    eveningTiming: '04:00 PM - 10:00 PM',
-    description: 'Installation of eco-friendly Ganesha idol, special Modak offerings, daily Sahasranama Archana, and cultural performances.',
-    image: 'https://images.unsplash.com/photo-1617135671158-989e51b4e868?auto=format&fit=crop&w=800&q=80',
-    category: 'Grand Festival'
-  },
-  {
-    id: 'f4',
-    name: 'Sharad Navarathri Celebrations',
-    date: '2026-10-11',
-    morningTiming: '04:00 AM - 02:00 PM',
-    eveningTiming: '03:00 PM - 11:00 PM',
-    description: '9-day grand celebrations featuring 9 distinct daily Alankarams of Sree Vasavi Kanyaka Parameswari Devi, Chandi Homam, and Vijayadasami.',
-    image: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=800&q=80',
-    category: 'Grand Festival'
-  },
-  {
-    id: 'f5',
-    name: 'Deepavali Light Utsavam',
-    date: '2026-11-08',
-    morningTiming: '05:00 AM - 01:00 PM',
-    eveningTiming: '04:30 PM - 10:30 PM',
-    description: 'Festival of Lights celebrations with Kedareswara Vratam, Lakshmi Pooja, and thousands of oil lamps illuminating the temple sanctum.',
-    image: 'https://images.unsplash.com/photo-1608958416713-ef377227443e?auto=format&fit=crop&w=800&q=80',
-    category: 'Light Utsavam'
-  }
-]
+import { useApp, INITIAL_FESTIVALS } from '../context/AppContext'
 
 const Festivals = () => {
-  const [festivals, setFestivals] = useState(() => {
-    return loadCloudData(STORAGE_KEYS.FESTIVALS, INITIAL_FESTIVALS)
-  })
+  const { festivalsStore } = useApp()
+  const festivals = festivalsStore && festivalsStore.length > 0 ? festivalsStore : INITIAL_FESTIVALS
   const [searchQuery, setSearchQuery] = useState('')
   const [countdowns, setCountdowns] = useState({})
   const [toastMessage, setToastMessage] = useState(null)
-
-  useEffect(() => {
-    const unsubscribe = subscribeToCloud(({ key, data }) => {
-      if (key === STORAGE_KEYS.FESTIVALS) setFestivals(data)
-    })
-    return () => unsubscribe()
-  }, [])
 
   // Real-time Countdown Engine
   useEffect(() => {
