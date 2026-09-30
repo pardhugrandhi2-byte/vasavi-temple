@@ -1,0 +1,47 @@
+{
+  "vasavi_temple_contact": {
+    "phone": "+91 88888 99999",
+    "whatsapp": "+91 99999 88888",
+    "email": "contact@vasavitemple.org",
+    "workingHours": "6:00 AM - 12:30 PM | 4:00 PM - 8:30 PM",
+    "address": "Main Bazar Road, Sree Vasavi Sanctum Complex, Penugonda, Andhra Pradesh, India.",
+    "googleMapsUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3817.752005058017!2d81.8079729!3d16.888158!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a37bd006577cc1b%3A0x72511491942ab40!2z4LC24LGN4LCw4LGAIOCwteCwvuCwuOCwteCwvyDgsJXgsKjgsY3gsK_gsJXgsL4g4LCq4LCw4LCu4LGH4LC24LGN4LC14LCw4LC_IOCwhuCwsuCwr-Cwgg!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin",
+    "googleMapsShareUrl": "https://maps.app.goo.gl/Uh59h8TafZxFuwhn9",
+    "youtubeUrl": "https://youtube.com",
+    "facebookUrl": "https://facebook.com",
+    "instagramUrl": "https://instagram.com",
+    "whatsappChannelUrl": "https://whatsapp.com"
+  },
+  "vasavi_temple_about": {
+    "subTitle": "Sacred History & Heritage",
+    "title": "Sree Vasavi Kanyaka Parameswari Devi",
+    "heroImage": "/temple-hero.jpg",
+    "introText": "Discover the divine story of Goddess Vasavi Devi, the sacred birthplace of Penugonda kshetram, and the timeless message of Ahimsa and Dharmic devotion.",
+    "storyTitle": "The Sacred Legend of Penugonda Kshetram",
+    "storyContent": "Sree Vasavi Kanyaka Parameswari Devi is revered as an embodiment of Goddess Parvati. Born to King Kusuma Shresthi and Kousalyamamba in Penugonda, she exemplified supreme wisdom, compassion, and divine purity from early childhood. To prevent bloodshed and uphold non-violence (Ahimsa), Goddess Vasavi entered the sacred fire (Agni Pravesam) along with 102 Gotra couples. Her eternal sacrifice sanctified Penugonda as the divine Moolakshetram, inspiring millions worldwide.",
+    "values": [
+      { "title": "Ahimsa & Peace", "description": "Promoting non-violence, universal harmony, and compassion across humanity." },
+      { "title": "Dharmic Heritage", "description": "Preserving ancient Vedic traditions, sacred rituals, and spiritual purity." },
+      { "title": "Nitya Annadanam", "description": "Serving free daily meals and supporting education and welfare for all pilgrims." }
+    ],
+    "timeline": [
+      { "year": "11th Century", "title": "Divine Avatar in Penugonda", "description": "Goddess Vasavi Devi lived in Penugonda, establishing the sacred values of Ahimsa and Atma Tyagam." },
+      { "year": "1975", "title": "Sanctum & Gopuram Consecration", "description": "Rebuilding of the main sanctum and gilding of sacred temple gopurams." },
+      { "year": "2026", "title": "Modern Pilgrim Amenities & Annadanam", "description": "Expanding facilities to serve over 5,000 pilgrims daily with free meals and digital seva." }
+    ],
+    "managementTitle": "Penugonda Vasavi Devasthanam Trust",
+    "managementDescription": "The temple is managed with complete devotion, transparency, and service by the governing trust committee dedicated to preserving sacred traditions and serving devotees."
+  },
+  "vasavi_temple_donation": {
+    "title": "Sacred E-Donations & Seva (UPI / PhonePe)",
+    "subtitle": "Scan the official temple UPI QR code or copy UPI ID to donate",
+    "upiId": "vasavitemple@ybl",
+    "payeeName": "Sree Vasavi Kanyaka Parameswari Devasthanam",
+    "customQrUrl": "",
+    "accountName": "Sree Vasavi Devasthanam Trust",
+    "accountNumber": "3829 0100 0048 291",
+    "bankName": "State Bank of India, Penugonda",
+    "ifscCode": "SBIN0002781",
+    "taxExemptionNote": "All monetary contributions to Penugonda Vasavi Devasthanam Trust are eligible for tax deduction benefits under Section 80G of the Indian Income Tax Act."
+  }
+}
