@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cinzel', serif;
+  }
+  
+  /* Modern Spiritual Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #FFF9F2;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #C67C00;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #A83232;
+  }
+}
+
+@layer components {
+  /* Elegant Gold Gradient button */
+  .btn-gold {
+    @apply px-6 py-2.5 bg-gradient-to-r from-temple-gold to-temple-gold-dark hover:from-temple-gold-dark hover:to-temple-gold text-white font-medium rounded shadow-md hover:shadow-lg transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  /* Elegant Maroon Outline button */
+  .btn-maroon-outline {
+    @apply px-6 py-2.5 border-2 border-temple-maroon text-temple-maroon hover:bg-temple-maroon hover:text-white font-medium rounded transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  /* Temple Decorative Border */
+  .border-spiritual {
+    position: relative;
+  }
+
+  .border-spiritual::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #C67C00, transparent);
+  }
+}
+
+/* Custom styles for animations and details */
+.glass-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
