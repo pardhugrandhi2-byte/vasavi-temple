@@ -9,7 +9,7 @@ import {
   MapPin, ExternalLink, Navigation, Compass
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
-import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE, INITIAL_FESTIVALS, INITIAL_ANNOUNCEMENTS } from '../context/AppContext'
+import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE, INITIAL_FESTIVALS } from '../context/AppContext'
 import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig } from '../services/db'
 import { cleanAndConvertMapsUrl, getMapsShareUrl, generateEmbedFromAddress, DEFAULT_TEMPLE_LOCATION } from '../utils/mapsHelper'
 
@@ -958,9 +958,8 @@ const Admin = () => {
         </AnimatePresence>
 
         {/* Admin Topbar Header */}
-        <header className={`h-16 border-b px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 ${
-          darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
-        }`}>
+        <header className={`h-16 border-b px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+          }`}>
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -989,9 +988,8 @@ const Admin = () => {
             </Link>
 
             {/* Emergency Status Pill (Desktop only for space) */}
-            <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-              emergencyClosed ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'
-            }`}>
+            <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${emergencyClosed ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'
+              }`}>
               <span className={`w-2 h-2 rounded-full ${emergencyClosed ? 'bg-red-500 animate-ping' : 'bg-green-500'}`}></span>
               <span>{emergencyClosed ? 'CLOSED OVERRIDE ACTIVE' : 'SYSTEM NORMAL'}</span>
             </div>
@@ -1021,7 +1019,7 @@ const Admin = () => {
         <div className="flex flex-grow relative overflow-hidden">
           {/* Mobile Sidebar Backdrop */}
           {sidebarOpen && (
-            <div 
+            <div
               className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
               onClick={() => setSidebarOpen(false)}
             />
@@ -1045,10 +1043,10 @@ const Admin = () => {
                       if (window.innerWidth < 1024) setSidebarOpen(false)
                     }}
                     className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${isActive
-                        ? 'bg-gradient-to-r from-temple-maroon to-temple-maroon-dark text-white shadow-md'
-                        : darkMode
-                          ? 'text-gray-300 hover:bg-gray-700'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-temple-maroon'
+                      ? 'bg-gradient-to-r from-temple-maroon to-temple-maroon-dark text-white shadow-md'
+                      : darkMode
+                        ? 'text-gray-300 hover:bg-gray-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-temple-maroon'
                       }`}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
@@ -1295,8 +1293,8 @@ const Admin = () => {
                             key={cat}
                             onClick={() => setActiveNoticeCategory(cat)}
                             className={`px-3 py-1 rounded-full font-medium transition-all ${activeNoticeCategory === cat
-                                ? 'bg-temple-gold text-white shadow-sm font-semibold'
-                                : 'text-gray-600 dark:text-gray-300 hover:text-temple-gold dark:hover:text-temple-gold'
+                              ? 'bg-temple-gold text-white shadow-sm font-semibold'
+                              : 'text-gray-600 dark:text-gray-300 hover:text-temple-gold dark:hover:text-temple-gold'
                               }`}
                           >
                             {cat}
@@ -1342,12 +1340,12 @@ const Admin = () => {
                         <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
                           <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full font-sans ${item.category === 'Alert'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800'
-                                : item.category === 'Timings'
-                                  ? 'bg-temple-gold/15 text-temple-gold border border-temple-gold/30'
-                                  : item.category === 'Poojas'
-                                    ? 'bg-temple-maroon/10 text-temple-maroon dark:text-temple-gold border border-temple-maroon/20'
-                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800'
+                              : item.category === 'Timings'
+                                ? 'bg-temple-gold/15 text-temple-gold border border-temple-gold/30'
+                                : item.category === 'Poojas'
+                                  ? 'bg-temple-maroon/10 text-temple-maroon dark:text-temple-gold border border-temple-maroon/20'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                               }`}>
                               {item.category}
                             </span>
@@ -2952,8 +2950,8 @@ const Admin = () => {
                               type="button"
                               onClick={() => setImageUploadMode('file')}
                               className={`flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${imageUploadMode === 'file'
-                                  ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
                                 }`}
                             >
                               <UploadCloud className="w-4 h-4 text-temple-gold" />
@@ -2964,8 +2962,8 @@ const Admin = () => {
                               type="button"
                               onClick={() => setImageUploadMode('url')}
                               className={`flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${imageUploadMode === 'url'
-                                  ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
                                 }`}
                             >
                               <LinkIcon className="w-4 h-4 text-temple-gold" />
@@ -3148,8 +3146,8 @@ const Admin = () => {
                               type="button"
                               onClick={() => setImageUploadMode('file')}
                               className={`flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${imageUploadMode === 'file'
-                                  ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
                                 }`}
                             >
                               <UploadCloud className="w-4 h-4 text-temple-gold" />
@@ -3160,8 +3158,8 @@ const Admin = () => {
                               type="button"
                               onClick={() => setImageUploadMode('url')}
                               className={`flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${imageUploadMode === 'url'
-                                  ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                ? 'bg-white dark:bg-gray-800 text-temple-maroon dark:text-temple-gold shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
                                 }`}
                             >
                               <LinkIcon className="w-4 h-4 text-temple-gold" />
