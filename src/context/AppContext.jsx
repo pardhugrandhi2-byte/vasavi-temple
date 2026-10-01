@@ -331,9 +331,9 @@ export const AppProvider = ({ children }) => {
   }, [scheduleStore])
 
   // ── Update handlers (Admin → backend + instant state update) ─────────────────
-  const updateGalleryStore = (newGallery) => {
+  const updateGalleryStore = async (newGallery) => {
     setGalleryStore(newGallery)
-    saveCloudData(STORAGE_KEYS.GALLERY, newGallery)
+    return saveCloudData(STORAGE_KEYS.GALLERY, newGallery)
   }
 
   const updateContactStore = (newDetails) => {

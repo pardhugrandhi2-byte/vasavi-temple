@@ -119,12 +119,35 @@ export const uploadImageToStorage = async (file, folder = 'gallery', opts = {}) 
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
     const publicUrl = data?.publicUrl
 
-    if (!publicUrl || !/^https?:\/\//i.test(publicUrl)) {
+    let parsedPublicUrl
+    let parsedSupabaseUrl
+    try {
+      parsedPublicUrl = new URL(publicUrl)
+      parsedSupabaseUrl = new URL(SUPABASE_URL)
+    } catch {
       return {
         success: false,
         error: 'Supabase did not return a valid public URL after upload.'
       }
     }
+
+    if (
+      parsedPublicUrl.protocol !== 'https:' ||
+      parsedPublicUrl.origin !== parsedSupabaseUrl.origin ||
+      !parsedPublicUrl.pathname.includes(`/storage/v1/object/public/${BUCKET}/`)
+    ) {
+      return {
+        success: false,
+        error: 'Supabase did not return a valid public URL after upload.'
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      const publicImage = new Image()
+      publicImage.onload = resolve
+      publicImage.onerror = () => reject(new Error('Uploaded image is not publicly accessible from Supabase Storage.'))
+      publicImage.src = publicUrl
+    })
 
     console.log('[Supabase Storage] Upload successful:', publicUrl)
     return { success: true, url: publicUrl, path: filePath }

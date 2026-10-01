@@ -546,8 +546,9 @@ const Admin = () => {
   const syncGalleryToStore = (updatedList) => {
     setGallery(updatedList)
     if (updateGalleryStore) {
-      updateGalleryStore(updatedList)
+      return updateGalleryStore(updatedList)
     }
+    return Promise.resolve({ success: false, error: 'Gallery storage is unavailable.' })
   }
 
   // Settings & Timings Overrides State
@@ -767,21 +768,32 @@ const Admin = () => {
         showToast('Please select an image file from your device or paste an image URL.')
         return
       }
-      // Ensure the image is a valid HTTP/HTTPS URL (not base64)
+      // Device uploads must use their permanent Supabase Storage URL.
+      if (currentData.fileName && !/^https:\/\/[^/]+\/storage\/v1\/object\/public\/temple-images\//i.test(currentData.image)) {
+        showToast('Image must finish uploading to Supabase Storage before it can be saved.')
+        return
+      }
       if (!/^https?:\/\//i.test(currentData.image)) {
         showToast('Image must be uploaded to Supabase Storage first. Please use Upload From Device.')
         return
       }
       let updatedList = []
+      let galleryItem = currentData
       if (currentData.id) {
-        updatedList = gallery.map(g => g.id === currentData.id ? currentData : g)
-        showToast('Gallery item updated successfully.')
+        updatedList = gallery.map(g => g.id === currentData.id ? galleryItem : g)
       } else {
-        const newItem = { ...currentData, id: `g_${Date.now()}` }
-        updatedList = [newItem, ...gallery]
-        showToast('New image added to gallery.')
+        galleryItem = { ...currentData, id: `g_${Date.now()}` }
+        updatedList = [galleryItem, ...gallery]
+        setFormData(galleryItem)
       }
-      syncGalleryToStore(updatedList)
+
+      const saveResult = await syncGalleryToStore(updatedList)
+      if (!saveResult?.success) {
+        console.error('[Admin] Gallery save failed:', saveResult?.error || 'Unknown persistence error')
+        showToast(`Gallery could not be saved to Supabase: ${saveResult?.error || 'Please try again.'}`)
+        return
+      }
+      showToast(currentData.id ? 'Gallery item updated successfully.' : 'New image added to gallery.')
     }
     setIsModalOpen(false)
   }
