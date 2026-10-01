@@ -566,6 +566,16 @@ const Admin = () => {
   const [toast, setToast] = useState(null)
   const [imageUploadMode, setImageUploadMode] = useState('file') // 'file' | 'url'
   const [isUploading, setIsUploading] = useState(false)
+  const [previewObjectUrl, setPreviewObjectUrl] = useState('')
+
+  useEffect(() => {
+    if (!isModalOpen && previewObjectUrl) {
+      setPreviewObjectUrl('')
+    }
+    return () => {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
+    }
+  }, [isModalOpen, previewObjectUrl])
 
   // Device file upload — uploads directly to Supabase Storage (no base64, no Render)
   const handleDeviceFileUpload = async (e) => {
@@ -575,6 +585,10 @@ const Admin = () => {
       showToast('Please select a valid image file (JPG, PNG, WebP).')
       return
     }
+    const localPreviewUrl = URL.createObjectURL(file)
+    setPreviewObjectUrl(localPreviewUrl)
+    setFormData(prev => ({ ...prev, image: localPreviewUrl, fileName: file.name }))
+    e.target.value = ''
     setIsUploading(true)
     try {
       showToast('Uploading image to Supabase Storage...')
@@ -585,6 +599,7 @@ const Admin = () => {
           image: uploadResult.url,
           fileName: file.name
         }))
+        setPreviewObjectUrl('')
         showToast(`Uploaded "${file.name}" to Supabase Storage.`)
       } else {
         showToast(uploadResult?.error || 'Image upload failed. Please try again.')
@@ -754,7 +769,7 @@ const Admin = () => {
       }
       // Ensure the image is a valid HTTP/HTTPS URL (not base64)
       if (!/^https?:\/\//i.test(currentData.image)) {
-        showToast('Image must be uploaded to Cloudinary first. Please use Upload From Device.')
+        showToast('Image must be uploaded to Supabase Storage first. Please use Upload From Device.')
         return
       }
       let updatedList = []
@@ -3150,7 +3165,7 @@ const Admin = () => {
                                 <UploadCloud className={`w-6 h-6 ${isUploading ? 'animate-bounce' : ''}`} />
                               </div>
                               <span className="font-bold text-xs md:text-sm text-temple-maroon dark:text-temple-gold mb-1">
-                                {isUploading ? 'Uploading image to Cloudinary...' : 'Click to upload photo from device / computer'}
+                                {isUploading ? 'Uploading image to Supabase Storage...' : 'Click to upload photo from device / computer'}
                               </span>
                               <span className="text-[11px] text-gray-400 font-serif">
                                 Supports JPG, PNG, WEBP, GIF. Auto-resized for fast loading.
@@ -3175,7 +3190,10 @@ const Admin = () => {
                               type="url"
                               placeholder="https://images.unsplash.com/photo-..."
                               value={formData.image || ''}
-                              onChange={e => setFormData({ ...formData, image: e.target.value, fileName: null })}
+                              onChange={e => {
+                                setPreviewObjectUrl('')
+                                setFormData({ ...formData, image: e.target.value, fileName: null })
+                              }}
                               className="w-full border border-gray-300 dark:border-gray-600 p-2.5 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold text-xs placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-temple-gold shadow-sm"
                             />
                           </div>
@@ -3194,7 +3212,10 @@ const Admin = () => {
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => setFormData({ ...formData, image: '', fileName: null })}
+                                  onClick={() => {
+                                    setPreviewObjectUrl('')
+                                    setFormData({ ...formData, image: '', fileName: null })
+                                  }}
                                   className="text-[10px] text-red-500 hover:text-red-700 font-bold underline"
                                 >
                                   Remove Photo
