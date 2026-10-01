@@ -326,7 +326,7 @@ const Admin = () => {
 
   const handleQrImageUpload = (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file.')
       return
@@ -336,32 +336,39 @@ const Admin = () => {
       const img = new Image()
       img.src = event.target.result
       img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
-        const maxDim = 800
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width)
-            width = maxDim
-          } else {
-            width = Math.round((width * maxDim) / height)
-            height = maxDim
+        setIsUploading(true)
+        try {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          const maxDim = 800
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
           }
-        }
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        const compressed = canvas.toDataURL('image/jpeg', 0.85)
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          const compressed = canvas.toDataURL('image/jpeg', 0.85)
 
-        showToast('Uploading QR Code to Cloudinary...')
-        const uploadResult = await uploadImageToCloud(compressed, 'vasavi_temple_qr')
-        if (uploadResult?.success && uploadResult?.url) {
-          setDonationForm(prev => ({ ...prev, customQrUrl: uploadResult.url }))
-          showToast(`Uploaded custom QR Code image: "${file.name}"`)
-        } else {
+          showToast('Uploading QR Code to Cloudinary...')
+          const uploadResult = await uploadImageToCloud(compressed, 'vasavi_temple_qr')
+          if (uploadResult?.success && uploadResult?.url) {
+            setDonationForm(prev => ({ ...prev, customQrUrl: uploadResult.url }))
+            showToast(`Uploaded custom QR Code image: "${file.name}"`)
+          } else {
+            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
+          }
+        } catch (err) {
           showToast('Image upload failed. Please try again.')
+        } finally {
+          setIsUploading(false)
         }
       }
     }
@@ -453,7 +460,7 @@ const Admin = () => {
   // Device file upload for About Hero Image
   const handleAboutImageUpload = (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (JPG, PNG, WebP).')
       return
@@ -464,35 +471,42 @@ const Admin = () => {
       const img = new Image()
       img.src = event.target.result
       img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
-        const maxDim = 1200
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width)
-            width = maxDim
-          } else {
-            width = Math.round((width * maxDim) / height)
-            height = maxDim
+        setIsUploading(true)
+        try {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          const maxDim = 1200
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
           }
-        }
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
 
-        showToast('Uploading About image to Cloudinary...')
-        const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_about')
-        if (uploadResult?.success && uploadResult?.url) {
-          setAboutForm(prev => ({
-            ...prev,
-            heroImage: uploadResult.url
-          }))
-          showToast(`About hero image updated: "${file.name}"`)
-        } else {
+          showToast('Uploading About image to Cloudinary...')
+          const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_about')
+          if (uploadResult?.success && uploadResult?.url) {
+            setAboutForm(prev => ({
+              ...prev,
+              heroImage: uploadResult.url
+            }))
+            showToast(`About hero image updated: "${file.name}"`)
+          } else {
+            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
+          }
+        } catch (err) {
           showToast('Image upload failed. Please try again.')
+        } finally {
+          setIsUploading(false)
         }
       }
     }
@@ -608,11 +622,12 @@ const Admin = () => {
   const [formData, setFormData] = useState({})
   const [toast, setToast] = useState(null)
   const [imageUploadMode, setImageUploadMode] = useState('file') // 'file' | 'url'
+  const [isUploading, setIsUploading] = useState(false)
 
   // Device file upload reader with instant canvas optimization and Cloudinary integration
   const handleDeviceFileUpload = (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (JPG, PNG, WebP).')
       return
@@ -623,39 +638,46 @@ const Admin = () => {
       const img = new Image()
       img.src = event.target.result
       img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
+        setIsUploading(true)
+        try {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
 
-        const maxDim = 1200
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width)
-            width = maxDim
-          } else {
-            width = Math.round((width * maxDim) / height)
-            height = maxDim
+          const maxDim = 1200
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
           }
-        }
 
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
 
-        showToast('Uploading image to Cloudinary...')
-        const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
-        if (uploadResult?.success && uploadResult?.url) {
-          setFormData(prev => ({
-            ...prev,
-            image: uploadResult.url,
-            fileName: file.name
-          }))
-          showToast(`Uploaded "${file.name}" to cloud storage.`)
-        } else {
+          showToast('Uploading image to Cloudinary...')
+          const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
+          if (uploadResult?.success && uploadResult?.url) {
+            setFormData(prev => ({
+              ...prev,
+              image: uploadResult.url,
+              fileName: file.name
+            }))
+            showToast(`Uploaded "${file.name}" to cloud storage.`)
+          } else {
+            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
+          }
+        } catch (err) {
           showToast('Image upload failed. Please try again.')
+        } finally {
+          setIsUploading(false)
         }
       }
     }
@@ -726,6 +748,7 @@ const Admin = () => {
 
   // Open Create/Edit Modal
   const handleOpenModal = (type, item = null) => {
+    setIsUploading(false)
     setModalType(type)
     if (item) {
       setFormData(item)
@@ -768,16 +791,26 @@ const Admin = () => {
   // Save Modal Form (Create / Edit)
   const handleSaveForm = async (e) => {
     e.preventDefault()
+    if (isUploading) return
+
     let currentData = { ...formData }
 
     if (currentData.image && currentData.image.startsWith('data:image/')) {
-      showToast('Uploading image to Cloudinary...')
-      const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
-      if (uploadRes?.success && uploadRes?.url) {
-        currentData.image = uploadRes.url
-      } else {
+      setIsUploading(true)
+      try {
+        showToast('Uploading image to Cloudinary...')
+        const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
+        if (uploadRes?.success && uploadRes?.url) {
+          currentData.image = uploadRes.url
+        } else {
+          showToast(uploadRes?.error || 'Image upload failed. Please try again.')
+          return
+        }
+      } catch (err) {
         showToast('Image upload failed. Please try again.')
         return
+      } finally {
+        setIsUploading(false)
       }
     }
 
@@ -2660,11 +2693,11 @@ const Admin = () => {
                   </div>
 
                   {/* Pagination */}
-                  <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center text-xs">
+                  <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center text-xs text-gray-700 dark:text-gray-200">
                     <span>Page {currentPage} of {totalPages}</span>
                     <div className="flex gap-2">
-                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-1.5 border rounded disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-                      <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-1.5 border rounded disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-1.5 border border-gray-200 dark:border-gray-700 rounded text-gray-700 dark:text-gray-200 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+                      <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-1.5 border border-gray-200 dark:border-gray-700 rounded text-gray-700 dark:text-gray-200 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -3207,13 +3240,13 @@ const Admin = () => {
                           <div className="flex flex-col gap-2">
                             <label
                               htmlFor="device-image-input"
-                              className="border-2 border-dashed border-temple-gold/40 hover:border-temple-gold dark:border-gray-600 dark:hover:border-temple-gold rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer bg-temple-cream/30 dark:bg-gray-700/30 hover:bg-temple-cream/60 transition-all group"
+                              className={`border-2 border-dashed border-temple-gold/40 hover:border-temple-gold dark:border-gray-600 dark:hover:border-temple-gold rounded-2xl p-5 flex flex-col items-center justify-center text-center bg-temple-cream/30 dark:bg-gray-700/30 hover:bg-temple-cream/60 transition-all group ${isUploading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                               <div className="w-12 h-12 rounded-full bg-temple-gold/10 text-temple-gold flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <UploadCloud className="w-6 h-6" />
+                                <UploadCloud className={`w-6 h-6 ${isUploading ? 'animate-bounce' : ''}`} />
                               </div>
                               <span className="font-bold text-xs md:text-sm text-temple-maroon dark:text-temple-gold mb-1">
-                                Click to upload photo from device / computer
+                                {isUploading ? 'Uploading image to Cloudinary...' : 'Click to upload photo from device / computer'}
                               </span>
                               <span className="text-[11px] text-gray-400 font-serif">
                                 Supports JPG, PNG, WEBP, GIF. Auto-resized for fast loading.
@@ -3222,6 +3255,7 @@ const Admin = () => {
                                 id="device-image-input"
                                 type="file"
                                 accept="image/*"
+                                disabled={isUploading}
                                 onChange={handleDeviceFileUpload}
                                 className="hidden"
                               />
@@ -3295,9 +3329,17 @@ const Admin = () => {
                     </button>
                     <button
                       type="submit"
-                      className="btn-gold !py-2.5 !px-6 text-xs uppercase font-bold tracking-wider shadow-lg hover:scale-105 transition-transform"
+                      disabled={isUploading}
+                      className="btn-gold !py-2.5 !px-6 text-xs uppercase font-bold tracking-wider shadow-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
                     >
-                      Save Changes
+                      {isUploading ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          <span>Uploading Image...</span>
+                        </>
+                      ) : (
+                        <span>Save Changes</span>
+                      )}
                     </button>
                   </div>
                 </form>
