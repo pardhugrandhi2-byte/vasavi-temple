@@ -662,9 +662,11 @@ const Admin = () => {
 
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
 
+          console.log('[Cloudinary] Starting upload...')
           showToast('Uploading image to Cloudinary...')
           const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
-          if (uploadResult?.success && uploadResult?.url) {
+          console.log('[Cloudinary] Upload result:', uploadResult)
+          if (uploadResult?.success && uploadResult?.url && /^https?:\/\//i.test(uploadResult.url)) {
             setFormData(prev => ({
               ...prev,
               image: uploadResult.url,
@@ -798,9 +800,11 @@ const Admin = () => {
     if (currentData.image && currentData.image.startsWith('data:image/')) {
       setIsUploading(true)
       try {
+        console.log('[Cloudinary] Starting upload...')
         showToast('Uploading image to Cloudinary...')
         const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
-        if (uploadRes?.success && uploadRes?.url) {
+        console.log('[Cloudinary] Upload result:', uploadRes)
+        if (uploadRes?.success && uploadRes?.url && /^https?:\/\//i.test(uploadRes.url)) {
           currentData.image = uploadRes.url
         } else {
           showToast(uploadRes?.error || 'Image upload failed. Please try again.')
@@ -851,6 +855,11 @@ const Admin = () => {
     } else if (modalType === 'gallery') {
       if (!currentData.image || !currentData.image.trim()) {
         showToast('Please select an image file from your device or paste an image URL.')
+        return
+      }
+      // Ensure the image is a valid HTTP/HTTPS URL (not base64)
+      if (!/^https?:\/\//i.test(currentData.image)) {
+        showToast('Image must be uploaded to Cloudinary first. Please use Upload From Device.')
         return
       }
       let updatedList = []

@@ -294,6 +294,13 @@ app.put('/api/data/:key', async (req, res) => {
 app.post('/api/upload', async (req, res) => {
   const { image, folder = 'vasavi_temple' } = req.body
 
+  console.log('[Cloudinary] Upload request received')
+  console.log('[Cloudinary] Credentials configured:', Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ))
+
   if (!image) {
     return res.status(400).json({ success: false, message: 'Image data URI or URL is required' })
   }
@@ -303,29 +310,31 @@ app.post('/api/upload', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Image payload exceeds 10MB file limit' })
   }
 
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-    try {
-      const uploadRes = await cloudinary.uploader.upload(image, {
-        folder,
-        resource_type: 'auto'
-      })
-      return res.json({
-        success: true,
-        secure_url: uploadRes.secure_url,
-        url: uploadRes.secure_url,
-        public_id: uploadRes.public_id
-      })
-    } catch (err) {
-      console.error('[Cloudinary] Upload error:', err.message)
-      return res.status(500).json({ success: false, message: `Cloudinary upload failed: ${err.message}` })
-    }
-  } else {
-    // Fallback if Cloudinary env vars aren't configured on the server
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.error('[Cloudinary] Upload failed: Cloudinary environment variables are missing on the server.')
+    return res.status(500).json({
+      success: false,
+      message: 'Cloudinary is not configured on the server'
+    })
+  }
+
+  try {
+    const uploadRes = await cloudinary.uploader.upload(image, {
+      folder,
+      resource_type: 'auto'
+    })
+    console.log('[Cloudinary] Upload successful:', uploadRes.secure_url)
     return res.json({
       success: true,
-      secure_url: image,
-      url: image,
-      message: 'Cloudinary not configured. Returning image URL / URI.'
+      url: uploadRes.secure_url,
+      secure_url: uploadRes.secure_url,
+      public_id: uploadRes.public_id
+    })
+  } catch (err) {
+    console.error('[Cloudinary] Upload error:', err.message)
+    return res.status(500).json({
+      success: false,
+      message: `Cloudinary upload failed: ${err.message || 'Unknown error'}`
     })
   }
 })
