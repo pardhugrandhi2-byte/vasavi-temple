@@ -13,10 +13,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-    disk:
-      name: temple-data
-      mountPath: /opt/render/project/src
-      sizeGB: 1
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
 
   # ── Frontend Static Site ──────────────────────────────────────
   - type: web

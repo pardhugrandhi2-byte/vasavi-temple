@@ -1,14 +1,39 @@
 // ============================================================
-// Sree Vasavi Temple – REST API Backend (Render Deployment)
+// Sree Vasavi Temple – REST API Backend (Supabase + Cloudinary)
 // ============================================================
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const fs = require('fs')
 const path = require('path')
+const { createClient } = require('@supabase/supabase-js')
+const cloudinary = require('cloudinary').v2
 
 const app = express()
 const PORT = process.env.PORT || 4000
 const DATA_FILE = path.join(__dirname, 'data.json')
+
+// ── Supabase Setup ────────────────────────────────────────────
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+
+let supabase = null
+if (SUPABASE_URL && SUPABASE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+  console.log('[DB] Supabase Cloud Client Initialized successfully.')
+} else {
+  console.warn('[DB] Warning: SUPABASE_URL or SUPABASE_SECRET_KEY missing. Falling back to local data.json.')
+}
+
+// ── Cloudinary Setup ──────────────────────────────────────────
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  })
+  console.log('[Cloudinary] Image storage initialized successfully.')
+}
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(express.json({ limit: '50mb' }))
@@ -20,34 +45,145 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
-// ── Data helpers ──────────────────────────────────────────────
-const readData = () => {
+// ── Local Fallback Helpers ─────────────────────────────────────
+const readLocalData = () => {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, 'utf8')
       return JSON.parse(raw)
     }
   } catch (err) {
-    console.error('[DB] Error reading data.json:', err.message)
+    console.error('[DB] Error reading local data.json:', err.message)
   }
   return {}
 }
 
-const writeData = (payload) => {
+const writeLocalData = (payload) => {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), 'utf8')
     return true
   } catch (err) {
-    console.error('[DB] Error writing data.json:', err.message)
+    console.error('[DB] Error writing local data.json:', err.message)
     return false
   }
+}
+
+// ── Data persistence helpers (Supabase primary, local fallback) ──
+const readAllData = async () => {
+  if (!supabase) {
+    return readLocalData()
+  }
+  try {
+    const { data, error } = await supabase.from('temple_config').select('key, value')
+    if (error) {
+      console.error('[DB] Supabase read error:', error.message)
+      return readLocalData()
+    }
+    if (!data || data.length === 0) {
+      console.info('[DB] Supabase table is empty. Seeding from local data.json...')
+      const local = readLocalData()
+      if (Object.keys(local).length > 0) {
+        await writeAllData(local)
+      }
+      return local
+    }
+    const result = {}
+    data.forEach(row => {
+      result[row.key] = row.value
+    })
+    return result
+  } catch (err) {
+    console.error('[DB] Exception fetching from Supabase:', err.message)
+    return readLocalData()
+  }
+}
+
+const readSingleKey = async (key) => {
+  if (!supabase) {
+    const data = readLocalData()
+    return data[key]
+  }
+  try {
+    const { data, error } = await supabase.from('temple_config').select('value').eq('key', key).single()
+    if (error) {
+      if (error.code === 'PGRST116') return undefined // Row not found
+      console.error(`[DB] Supabase key "${key}" read error:`, error.message)
+      const local = readLocalData()
+      return local[key]
+    }
+    return data?.value
+  } catch (err) {
+    console.error(`[DB] Exception reading key "${key}":`, err.message)
+    const local = readLocalData()
+    return local[key]
+  }
+}
+
+const writeSingleKey = async (key, value) => {
+  let supabaseSuccess = false
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('temple_config')
+        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      if (error) {
+        console.error(`[DB] Supabase upsert error for key "${key}":`, error.message)
+      } else {
+        supabaseSuccess = true
+      }
+    } catch (err) {
+      console.error(`[DB] Exception writing key "${key}" to Supabase:`, err.message)
+    }
+  }
+
+  // Also sync to local file as backup cache
+  const localData = readLocalData()
+  localData[key] = value
+  writeLocalData(localData)
+
+  return supabaseSuccess || !supabase
+}
+
+const writeAllData = async (payload) => {
+  let supabaseSuccess = false
+  if (supabase) {
+    try {
+      const rows = Object.keys(payload).map(key => ({
+        key,
+        value: payload[key],
+        updated_at: new Date().toISOString()
+      }))
+      const { error } = await supabase
+        .from('temple_config')
+        .upsert(rows, { onConflict: 'key' })
+      if (error) {
+        console.error('[DB] Supabase batch upsert error:', error.message)
+      } else {
+        supabaseSuccess = true
+      }
+    } catch (err) {
+      console.error('[DB] Exception writing batch data to Supabase:', err.message)
+    }
+  }
+
+  const currentLocal = readLocalData()
+  const merged = { ...currentLocal, ...payload }
+  writeLocalData(merged)
+
+  return supabaseSuccess || !supabase
 }
 
 // ── Routes ────────────────────────────────────────────────────
 
 // Health check – Render pings this to confirm the service is alive
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'vasavi-temple-api' })
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'vasavi-temple-api',
+    storageProvider: supabase ? 'Supabase Free Cloud' : 'Local File System (Fallback)',
+    imageStorageProvider: (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) ? 'Cloudinary Cloud' : 'Direct Data URI / URL Fallback'
+  })
 })
 
 // GET /api/resolve-map?url=... – Resolves a Google Maps shortlink to embed URL
@@ -97,66 +233,112 @@ app.get('/api/resolve-map', async (req, res) => {
 })
 
 // GET /api/data – Return full temple state
-app.get('/api/data', (req, res) => {
-  const data = readData()
-  res.json({ success: true, data })
+app.get('/api/data', async (req, res) => {
+  try {
+    const data = await readAllData()
+    res.json({ success: true, data })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 })
 
 // GET /api/data/:key – Return a specific store by key
-app.get('/api/data/:key', (req, res) => {
-  const data = readData()
-  const { key } = req.params
-  if (data[key] !== undefined) {
-    res.json({ success: true, key, data: data[key] })
-  } else {
-    res.status(404).json({ success: false, message: `Key "${key}" not found` })
+app.get('/api/data/:key', async (req, res) => {
+  try {
+    const { key } = req.params
+    const val = await readSingleKey(key)
+    if (val !== undefined) {
+      res.json({ success: true, key, data: val })
+    } else {
+      res.status(404).json({ success: false, message: `Key "${key}" not found` })
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
   }
 })
 
 // PUT /api/data – Replace / merge full temple state
-app.put('/api/data', (req, res) => {
-  const current = readData()
+app.put('/api/data', async (req, res) => {
   const incoming = req.body
 
   if (!incoming || typeof incoming !== 'object') {
     return res.status(400).json({ success: false, message: 'Invalid JSON body' })
   }
 
-  // Deep merge: new keys overwrite, existing keys not in payload are kept
-  const merged = { ...current, ...incoming }
-  const ok = writeData(merged)
+  const ok = await writeAllData(incoming)
 
   if (ok) {
-    console.log(`[DB] State updated – keys: ${Object.keys(incoming).join(', ')}`)
+    console.log(`[DB] State updated in Supabase/Local – keys: ${Object.keys(incoming).join(', ')}`)
     res.json({ success: true, message: 'Data saved successfully' })
   } else {
-    res.status(500).json({ success: false, message: 'Failed to write data to disk' })
+    res.status(500).json({ success: false, message: 'Failed to write data to database' })
   }
 })
 
 // PUT /api/data/:key – Upsert a single key
-app.put('/api/data/:key', (req, res) => {
-  const data = readData()
+app.put('/api/data/:key', async (req, res) => {
   const { key } = req.params
   const value = req.body
 
-  data[key] = value
-  const ok = writeData(data)
+  const ok = await writeSingleKey(key, value)
 
   if (ok) {
-    console.log(`[DB] Key "${key}" updated`)
+    console.log(`[DB] Key "${key}" updated in persistent storage.`)
     res.json({ success: true, key })
   } else {
-    res.status(500).json({ success: false, message: 'Failed to write data to disk' })
+    res.status(500).json({ success: false, message: `Failed to write key "${key}" to database` })
+  }
+})
+
+// POST /api/upload – Persistent image upload endpoint (Cloudinary)
+app.post('/api/upload', async (req, res) => {
+  const { image, folder = 'vasavi_temple' } = req.body
+
+  if (!image) {
+    return res.status(400).json({ success: false, message: 'Image data URI or URL is required' })
+  }
+
+  // Reject unnecessarily large files (>10MB in base64 size)
+  if (typeof image === 'string' && image.length > 14 * 1024 * 1024) {
+    return res.status(400).json({ success: false, message: 'Image payload exceeds 10MB file limit' })
+  }
+
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    try {
+      const uploadRes = await cloudinary.uploader.upload(image, {
+        folder,
+        resource_type: 'auto'
+      })
+      return res.json({
+        success: true,
+        secure_url: uploadRes.secure_url,
+        url: uploadRes.secure_url,
+        public_id: uploadRes.public_id
+      })
+    } catch (err) {
+      console.error('[Cloudinary] Upload error:', err.message)
+      return res.status(500).json({ success: false, message: `Cloudinary upload failed: ${err.message}` })
+    }
+  } else {
+    // Fallback if Cloudinary env vars aren't configured on the server
+    return res.json({
+      success: true,
+      secure_url: image,
+      url: image,
+      message: 'Cloudinary not configured. Returning image URL / URI.'
+    })
   }
 })
 
 // POST /api/reset – Clear all stored data (admin utility)
-app.post('/api/reset', (req, res) => {
-  const ok = writeData({})
-  if (ok) {
-    res.json({ success: true, message: 'All data cleared' })
-  } else {
+app.post('/api/reset', async (req, res) => {
+  try {
+    if (supabase) {
+      await supabase.from('temple_config').delete().neq('key', '')
+    }
+    writeLocalData({})
+    res.json({ success: true, message: 'All database records cleared' })
+  } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to reset data' })
   }
 })

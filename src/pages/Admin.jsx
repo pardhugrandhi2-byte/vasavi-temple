@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE, INITIAL_FESTIVALS } from '../context/AppContext'
-import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig } from '../services/db'
+import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig, uploadImageToCloud } from '../services/db'
 import { cleanAndConvertMapsUrl, getMapsShareUrl, generateEmbedFromAddress, DEFAULT_TEMPLE_LOCATION } from '../utils/mapsHelper'
 
 // Scrollable time picker options
@@ -335,7 +335,7 @@ const Admin = () => {
     reader.onload = (event) => {
       const img = new Image()
       img.src = event.target.result
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas')
         let width = img.width
         let height = img.height
@@ -354,8 +354,13 @@ const Admin = () => {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
         const compressed = canvas.toDataURL('image/jpeg', 0.85)
-        setDonationForm(prev => ({ ...prev, customQrUrl: compressed }))
-        showToast(`Uploaded custom QR Code from device file: "${file.name}"`)
+
+        showToast('Uploading QR Code to Cloudinary...')
+        const uploadResult = await uploadImageToCloud(compressed, 'vasavi_temple_qr')
+        const finalUrl = uploadResult?.success ? uploadResult.url : compressed
+
+        setDonationForm(prev => ({ ...prev, customQrUrl: finalUrl }))
+        showToast(`Uploaded custom QR Code image: "${file.name}"`)
       }
     }
     reader.readAsDataURL(file)
@@ -456,7 +461,7 @@ const Admin = () => {
     reader.onload = (event) => {
       const img = new Image()
       img.src = event.target.result
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas')
         let width = img.width
         let height = img.height
@@ -475,11 +480,16 @@ const Admin = () => {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
+
+        showToast('Uploading About image to Cloudinary...')
+        const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_about')
+        const finalUrl = uploadResult?.success ? uploadResult.url : compressedDataUrl
+
         setAboutForm(prev => ({
           ...prev,
-          heroImage: compressedDataUrl
+          heroImage: finalUrl
         }))
-        showToast(`About image updated from device file: "${file.name}"`)
+        showToast(`About hero image updated: "${file.name}"`)
       }
     }
     reader.readAsDataURL(file)
@@ -595,7 +605,7 @@ const Admin = () => {
   const [toast, setToast] = useState(null)
   const [imageUploadMode, setImageUploadMode] = useState('file') // 'file' | 'url'
 
-  // Device file upload reader with instant canvas optimization
+  // Device file upload reader with instant canvas optimization and Cloudinary integration
   const handleDeviceFileUpload = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -608,7 +618,7 @@ const Admin = () => {
     reader.onload = (event) => {
       const img = new Image()
       img.src = event.target.result
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas')
         let width = img.width
         let height = img.height
@@ -630,12 +640,17 @@ const Admin = () => {
         ctx.drawImage(img, 0, 0, width, height)
 
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
+
+        showToast('Uploading image to Cloudinary...')
+        const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
+        const finalUrl = uploadResult?.success ? uploadResult.url : compressedDataUrl
+
         setFormData(prev => ({
           ...prev,
-          image: compressedDataUrl,
+          image: finalUrl,
           fileName: file.name
         }))
-        showToast(`Selected "${file.name}" from device.`)
+        showToast(`Uploaded "${file.name}" to cloud storage.`)
       }
     }
     reader.readAsDataURL(file)
@@ -745,15 +760,25 @@ const Admin = () => {
   }
 
   // Save Modal Form (Create / Edit)
-  const handleSaveForm = (e) => {
+  const handleSaveForm = async (e) => {
     e.preventDefault()
+    let currentData = { ...formData }
+
+    if (currentData.image && currentData.image.startsWith('data:image/')) {
+      showToast('Uploading image to Cloudinary...')
+      const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
+      if (uploadRes?.success && uploadRes?.url) {
+        currentData.image = uploadRes.url
+      }
+    }
+
     if (modalType === 'special_timings') {
       let updatedList = []
-      if (formData.id) {
-        updatedList = specialTimings.map(st => st.id === formData.id ? formData : st)
+      if (currentData.id) {
+        updatedList = specialTimings.map(st => st.id === currentData.id ? currentData : st)
         showToast('Special timing override updated.')
       } else {
-        const newItem = { ...formData, id: `st_${Date.now()}` }
+        const newItem = { ...currentData, id: `st_${Date.now()}` }
         updatedList = [newItem, ...specialTimings]
         showToast('New Special timing override created.')
       }
@@ -761,37 +786,37 @@ const Admin = () => {
       syncSpecialTimingsToStore(updatedList)
     } else if (modalType === 'festival') {
       let updatedFestivals
-      if (formData.id) {
-        updatedFestivals = festivals.map(f => f.id === formData.id ? formData : f)
+      if (currentData.id) {
+        updatedFestivals = festivals.map(f => f.id === currentData.id ? currentData : f)
         showToast('Festival details updated & published live!')
       } else {
-        updatedFestivals = [{ ...formData, id: `f_${Date.now()}` }, ...festivals]
+        updatedFestivals = [{ ...currentData, id: `f_${Date.now()}` }, ...festivals]
         showToast('New Festival added & published live!')
       }
       setFestivals(updatedFestivals)
       updateFestivalsStore(updatedFestivals)
     } else if (modalType === 'notice') {
       let updatedNotices
-      if (formData.id) {
-        updatedNotices = notices.map(n => n.id === formData.id ? formData : n)
+      if (currentData.id) {
+        updatedNotices = notices.map(n => n.id === currentData.id ? currentData : n)
         showToast('Announcement updated & published live!')
       } else {
-        updatedNotices = [{ ...formData, id: Date.now().toString() }, ...notices]
+        updatedNotices = [{ ...currentData, id: Date.now().toString() }, ...notices]
         showToast('New Announcement published live!')
       }
       setNotices(updatedNotices)
       updateNoticesStore(updatedNotices)
     } else if (modalType === 'gallery') {
-      if (!formData.image || !formData.image.trim()) {
+      if (!currentData.image || !currentData.image.trim()) {
         showToast('Please select an image file from your device or paste an image URL.')
         return
       }
       let updatedList = []
-      if (formData.id) {
-        updatedList = gallery.map(g => g.id === formData.id ? formData : g)
+      if (currentData.id) {
+        updatedList = gallery.map(g => g.id === currentData.id ? currentData : g)
         showToast('Gallery item updated successfully.')
       } else {
-        const newItem = { ...formData, id: `g_${Date.now()}` }
+        const newItem = { ...currentData, id: `g_${Date.now()}` }
         updatedList = [newItem, ...gallery]
         showToast('New image added to gallery.')
       }

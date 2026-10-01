@@ -1,14 +1,14 @@
 // ============================================================
 // Sree Vasavi Temple – Cloud Database Service
-// Backend (Render REST API) is the SINGLE SOURCE OF TRUTH.
-// No localStorage used for data — all reads/writes go to the backend.
+// Backend (Render REST API + Supabase) is the SINGLE SOURCE OF TRUTH.
+// No localStorage used for data as primary source — all reads/writes go to backend.
 // ============================================================
 
 const DEFAULT_BACKEND_URL = 'https://vasavi-temple-kadiyapulanka.onrender.com'
 const BACKEND_URL = (import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL).trim()
 const API_BASE = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : null
 
-// Storage keys — used as property names in the backend data.json
+// Storage keys — used as property names in Supabase & backend data store
 export const STORAGE_KEYS = {
   GALLERY:   'vasavi_temple_gallery',
   CONTACT:   'vasavi_temple_contact',
@@ -58,7 +58,7 @@ const apiFetch = async (path, options = {}) => {
 
 // ── Cloud Config (for Admin panel display) ────────────────────────────────────
 export const getCloudConfig = () => ({
-  provider: API_BASE ? 'Render REST API' : 'Default Values (No backend)',
+  provider: API_BASE ? 'Supabase Free Cloud (via Render API)' : 'Default Values (No backend)',
   status:   API_BASE ? 'Connected' : 'Not configured',
   endpointUrl: BACKEND_URL,
   apiKey:   '',
@@ -70,10 +70,10 @@ export const saveCloudConfig = (_config) => {}
 
 // ── FETCH all data from backend ───────────────────────────────────────────────
 /**
- * Fetches all temple data from the Render backend.
+ * Fetches all temple data from the Render backend (which queries Supabase).
  * Called on app startup by AppContext.
  * Notifies all subscribers (AppContext) so React state is updated.
- * Also caches to localStorage for instant subsequent loads.
+ * Also caches to localStorage as temporary fallback.
  */
 export const fetchRemoteCloudData = async () => {
   if (!API_BASE) {
@@ -90,7 +90,7 @@ export const fetchRemoteCloudData = async () => {
   const payload = result.data
   const keys = Object.keys(payload).filter(k => payload[k] !== undefined && payload[k] !== null)
 
-  // Cache to localStorage and push each key into AppContext via pub/sub
+  // Cache to localStorage as temporary cache and push each key into AppContext via pub/sub
   keys.forEach(key => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -102,17 +102,17 @@ export const fetchRemoteCloudData = async () => {
     notifyListeners({ key, data: payload[key] })
   })
 
-  console.log(`[API] ✓ Loaded ${keys.length} stores from backend:`, keys.join(', '))
+  console.log(`[API] ✓ Loaded ${keys.length} stores from Supabase cloud:`, keys.join(', '))
   return payload
 }
 
 // ── SAVE a single key to backend & localStorage ─────────────────────────────
 /**
- * Saves a key-value pair to localStorage (instant persistence) and the Render backend.
- * Also immediately notifies subscribers so React state updates without waiting.
+ * Saves a key-value pair to localStorage (temporary cache) and the Render backend (Supabase DB).
+ * Returns { success: boolean, error?: string } to alert Admin on failure.
  */
 export const saveCloudData = async (key, data) => {
-  // 1. Immediately cache in localStorage
+  // 1. Immediately cache in localStorage as fallback
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem(key, JSON.stringify(data))
@@ -130,22 +130,39 @@ export const saveCloudData = async (key, data) => {
   }
 
   try {
-    // PUT /api/data/:key — saves only this key on the backend
+    // PUT /api/data/:key — saves to Supabase via backend
     const res = await apiFetch(`/data/${key}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     })
 
     if (res?.success) {
-      console.log(`[API] ✓ "${key}" saved to backend`)
+      console.log(`[API] ✓ "${key}" persisted to Supabase`)
       return { success: true }
     } else {
-      console.error(`[API] ✗ Backend rejected save for key: "${key}"`)
-      return { success: false, error: 'Backend save failed' }
+      console.error(`[API] ✗ Backend rejected save for key: "${key}"`, res?.message)
+      return { success: false, error: res?.message || 'Database write rejected' }
     }
   } catch (error) {
-    console.error('[API] Save error:', error)
-    return { success: false, error: error.message }
+    console.error('[API] Save network error:', error)
+    return { success: false, error: error.message || 'Network communication failure' }
+  }
+}
+
+// ── Image Upload Helper (Cloudinary via Backend) ──────────────────────────────
+export const uploadImageToCloud = async (base64OrUrl, folder = 'vasavi_temple') => {
+  if (!API_BASE) return { success: false, error: 'No backend API configured' }
+  try {
+    const res = await apiFetch('/upload', {
+      method: 'POST',
+      body: JSON.stringify({ image: base64OrUrl, folder })
+    })
+    if (res?.success) {
+      return { success: true, url: res.url }
+    }
+    return { success: false, error: res?.message || 'Upload failed' }
+  } catch (err) {
+    return { success: false, error: err.message }
   }
 }
 
