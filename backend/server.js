@@ -7,7 +7,6 @@ const cors = require('cors')
 const fs = require('fs')
 const path = require('path')
 const { createClient } = require('@supabase/supabase-js')
-const cloudinary = require('cloudinary').v2
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -25,15 +24,7 @@ if (SUPABASE_URL && SUPABASE_KEY) {
   console.warn('[DB] Warning: SUPABASE_URL or SUPABASE_SECRET_KEY missing. Falling back to local data.json.')
 }
 
-// ── Cloudinary Setup ──────────────────────────────────────────
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  })
-  console.log('[Cloudinary] Image storage initialized successfully.')
-}
+
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(express.json({ limit: '50mb' }))
@@ -182,7 +173,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'vasavi-temple-api',
     storageProvider: supabase ? 'Supabase Free Cloud' : 'Local File System (Fallback)',
-    imageStorageProvider: (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) ? 'Cloudinary Cloud' : 'Direct Data URI / URL Fallback'
+    imageStorageProvider: 'Supabase Storage (direct browser upload)'
   })
 })
 
@@ -290,54 +281,9 @@ app.put('/api/data/:key', async (req, res) => {
   }
 })
 
-// POST /api/upload – Persistent image upload endpoint (Cloudinary)
-app.post('/api/upload', async (req, res) => {
-  const { image, folder = 'vasavi_temple' } = req.body
-
-  console.log('[Cloudinary] Upload request received')
-  console.log('[Cloudinary] Credentials configured:', Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  ))
-
-  if (!image) {
-    return res.status(400).json({ success: false, message: 'Image data URI or URL is required' })
-  }
-
-  // Reject unnecessarily large files (>10MB in base64 size)
-  if (typeof image === 'string' && image.length > 14 * 1024 * 1024) {
-    return res.status(400).json({ success: false, message: 'Image payload exceeds 10MB file limit' })
-  }
-
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.error('[Cloudinary] Upload failed: Cloudinary environment variables are missing on the server.')
-    return res.status(500).json({
-      success: false,
-      message: 'Cloudinary is not configured on the server'
-    })
-  }
-
-  try {
-    const uploadRes = await cloudinary.uploader.upload(image, {
-      folder,
-      resource_type: 'auto'
-    })
-    console.log('[Cloudinary] Upload successful:', uploadRes.secure_url)
-    return res.json({
-      success: true,
-      url: uploadRes.secure_url,
-      secure_url: uploadRes.secure_url,
-      public_id: uploadRes.public_id
-    })
-  } catch (err) {
-    console.error('[Cloudinary] Upload error:', err.message)
-    return res.status(500).json({
-      success: false,
-      message: `Cloudinary upload failed: ${err.message || 'Unknown error'}`
-    })
-  }
-})
+// NOTE: Image uploads go directly from the browser to Supabase Storage.
+// The /api/upload (Cloudinary) endpoint has been removed.
+// See src/services/supabase.js → uploadImageToStorage()
 
 // POST /api/reset – Clear all stored data (admin utility)
 app.post('/api/reset', async (req, res) => {

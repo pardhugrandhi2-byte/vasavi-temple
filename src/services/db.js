@@ -149,54 +149,10 @@ export const saveCloudData = async (key, data) => {
   }
 }
 
-// ── Image Upload Helper (Cloudinary via Backend with 30s Timeout) ────────────
-export const uploadImageToCloud = async (base64OrUrl, folder = 'vasavi_temple', timeoutMs = 30000) => {
-  if (!API_BASE) return { success: false, error: 'No backend API configured' }
-
-  console.log('[Cloudinary] Starting upload...')
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const res = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ image: base64OrUrl, folder }),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}))
-      const uploadResult = { success: false, error: errData.message || `Upload failed with HTTP ${res.status}` }
-      console.log('[Cloudinary] Upload result:', uploadResult)
-      return uploadResult
-    }
-
-    const data = await res.json()
-    // Only accept real Cloudinary HTTP/HTTPS URLs — never base64 data URIs
-    if (data?.success && data?.url && /^https?:\/\//i.test(data.url)) {
-      const uploadResult = { success: true, url: data.url, public_id: data.public_id }
-      console.log('[Cloudinary] Upload result:', uploadResult)
-      return uploadResult
-    }
-    const uploadResult = { success: false, error: data?.message || 'Upload did not return a valid Cloudinary URL' }
-    console.log('[Cloudinary] Upload result:', uploadResult)
-    return uploadResult
-  } catch (err) {
-    clearTimeout(timeoutId)
-    if (err.name === 'AbortError') {
-      const uploadResult = { success: false, error: 'Upload timed out. Please try again.' }
-      console.log('[Cloudinary] Upload result:', uploadResult)
-      return uploadResult
-    }
-    const uploadResult = { success: false, error: err.message || 'Network error during upload' }
-    console.log('[Cloudinary] Upload result:', uploadResult)
-    return uploadResult
-  }
-}
+// ── Image Upload ───────────────────────────────────────────────────────────────
+// Images are now uploaded directly from the browser to Supabase Storage.
+// See src/services/supabase.js → uploadImageToStorage()
+// The Render backend (/api/upload + Cloudinary) is no longer used for images.
 
 // ── LOAD from localStorage with fallback ─────────────────────────────────────
 /**

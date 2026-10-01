@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import PageTransition from '../components/common/PageTransition'
 import { useApp, DEFAULT_ABOUT_DETAILS, DEFAULT_DONATION_STORE, INITIAL_FESTIVALS } from '../context/AppContext'
-import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig, uploadImageToCloud } from '../services/db'
+import { saveCloudData, loadCloudData, STORAGE_KEYS, getCloudConfig, saveCloudConfig } from '../services/db'
+import { uploadImageToStorage } from '../services/supabase'
 import { cleanAndConvertMapsUrl, getMapsShareUrl, generateEmbedFromAddress, DEFAULT_TEMPLE_LOCATION } from '../utils/mapsHelper'
 
 // Scrollable time picker options
@@ -324,55 +325,28 @@ const Admin = () => {
     setDonationForm(prev => ({ ...prev, presetAmounts: updated }))
   }
 
-  const handleQrImageUpload = (e) => {
+  const handleQrImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file.')
       return
     }
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target.result
-      img.onload = async () => {
-        setIsUploading(true)
-        try {
-          const canvas = document.createElement('canvas')
-          let width = img.width
-          let height = img.height
-          const maxDim = 800
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width)
-              width = maxDim
-            } else {
-              width = Math.round((width * maxDim) / height)
-              height = maxDim
-            }
-          }
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, width, height)
-          const compressed = canvas.toDataURL('image/jpeg', 0.85)
-
-          showToast('Uploading QR Code to Cloudinary...')
-          const uploadResult = await uploadImageToCloud(compressed, 'vasavi_temple_qr')
-          if (uploadResult?.success && uploadResult?.url) {
-            setDonationForm(prev => ({ ...prev, customQrUrl: uploadResult.url }))
-            showToast(`Uploaded custom QR Code image: "${file.name}"`)
-          } else {
-            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
-          }
-        } catch (err) {
-          showToast('Image upload failed. Please try again.')
-        } finally {
-          setIsUploading(false)
-        }
+    setIsUploading(true)
+    try {
+      showToast('Uploading QR Code to Supabase Storage...')
+      const uploadResult = await uploadImageToStorage(file, 'qr', { maxDim: 800 })
+      if (uploadResult?.success && uploadResult?.url) {
+        setDonationForm(prev => ({ ...prev, customQrUrl: uploadResult.url }))
+        showToast(`Uploaded custom QR Code image: "${file.name}"`)
+      } else {
+        showToast(uploadResult?.error || 'Image upload failed. Please try again.')
       }
+    } catch (err) {
+      showToast('Image upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   // Datasets State (CRUD)
@@ -458,59 +432,28 @@ const Admin = () => {
   }
 
   // Device file upload for About Hero Image
-  const handleAboutImageUpload = (e) => {
+  const handleAboutImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (JPG, PNG, WebP).')
       return
     }
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target.result
-      img.onload = async () => {
-        setIsUploading(true)
-        try {
-          const canvas = document.createElement('canvas')
-          let width = img.width
-          let height = img.height
-          const maxDim = 1200
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width)
-              width = maxDim
-            } else {
-              width = Math.round((width * maxDim) / height)
-              height = maxDim
-            }
-          }
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, width, height)
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
-
-          showToast('Uploading About image to Cloudinary...')
-          const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_about')
-          if (uploadResult?.success && uploadResult?.url) {
-            setAboutForm(prev => ({
-              ...prev,
-              heroImage: uploadResult.url
-            }))
-            showToast(`About hero image updated: "${file.name}"`)
-          } else {
-            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
-          }
-        } catch (err) {
-          showToast('Image upload failed. Please try again.')
-        } finally {
-          setIsUploading(false)
-        }
+    setIsUploading(true)
+    try {
+      showToast('Uploading About image to Supabase Storage...')
+      const uploadResult = await uploadImageToStorage(file, 'about', { maxDim: 1200 })
+      if (uploadResult?.success && uploadResult?.url) {
+        setAboutForm(prev => ({ ...prev, heroImage: uploadResult.url }))
+        showToast(`About hero image updated: "${file.name}"`)
+      } else {
+        showToast(uploadResult?.error || 'Image upload failed. Please try again.')
       }
+    } catch (err) {
+      showToast('Image upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   // Contact Details Form State
@@ -624,66 +567,33 @@ const Admin = () => {
   const [imageUploadMode, setImageUploadMode] = useState('file') // 'file' | 'url'
   const [isUploading, setIsUploading] = useState(false)
 
-  // Device file upload reader with instant canvas optimization and Cloudinary integration
-  const handleDeviceFileUpload = (e) => {
+  // Device file upload — uploads directly to Supabase Storage (no base64, no Render)
+  const handleDeviceFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file || isUploading) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (JPG, PNG, WebP).')
       return
     }
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target.result
-      img.onload = async () => {
-        setIsUploading(true)
-        try {
-          const canvas = document.createElement('canvas')
-          let width = img.width
-          let height = img.height
-
-          const maxDim = 1200
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width)
-              width = maxDim
-            } else {
-              width = Math.round((width * maxDim) / height)
-              height = maxDim
-            }
-          }
-
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, width, height)
-
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
-
-          console.log('[Cloudinary] Starting upload...')
-          showToast('Uploading image to Cloudinary...')
-          const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
-          console.log('[Cloudinary] Upload result:', uploadResult)
-          if (uploadResult?.success && uploadResult?.url && /^https?:\/\//i.test(uploadResult.url)) {
-            setFormData(prev => ({
-              ...prev,
-              image: uploadResult.url,
-              fileName: file.name
-            }))
-            showToast(`Uploaded "${file.name}" to cloud storage.`)
-          } else {
-            showToast(uploadResult?.error || 'Image upload failed. Please try again.')
-          }
-        } catch (err) {
-          showToast('Image upload failed. Please try again.')
-        } finally {
-          setIsUploading(false)
-        }
+    setIsUploading(true)
+    try {
+      showToast('Uploading image to Supabase Storage...')
+      const uploadResult = await uploadImageToStorage(file, 'gallery', { maxDim: 1200 })
+      if (uploadResult?.success && uploadResult?.url && /^https?:\/\//i.test(uploadResult.url)) {
+        setFormData(prev => ({
+          ...prev,
+          image: uploadResult.url,
+          fileName: file.name
+        }))
+        showToast(`Uploaded "${file.name}" to Supabase Storage.`)
+      } else {
+        showToast(uploadResult?.error || 'Image upload failed. Please try again.')
       }
+    } catch (err) {
+      showToast('Image upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   // Auto Sync specialTimings to global scheduleStore for live countdowns
@@ -797,25 +707,10 @@ const Admin = () => {
 
     let currentData = { ...formData }
 
+    // Guard: if somehow a base64 data URI slipped through, block save
     if (currentData.image && currentData.image.startsWith('data:image/')) {
-      setIsUploading(true)
-      try {
-        console.log('[Cloudinary] Starting upload...')
-        showToast('Uploading image to Cloudinary...')
-        const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
-        console.log('[Cloudinary] Upload result:', uploadRes)
-        if (uploadRes?.success && uploadRes?.url && /^https?:\/\//i.test(uploadRes.url)) {
-          currentData.image = uploadRes.url
-        } else {
-          showToast(uploadRes?.error || 'Image upload failed. Please try again.')
-          return
-        }
-      } catch (err) {
-        showToast('Image upload failed. Please try again.')
-        return
-      } finally {
-        setIsUploading(false)
-      }
+      showToast('Image must be uploaded to Supabase Storage first. Please use Upload From Device.')
+      return
     }
 
     if (modalType === 'special_timings') {
