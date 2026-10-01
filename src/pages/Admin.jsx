@@ -357,10 +357,12 @@ const Admin = () => {
 
         showToast('Uploading QR Code to Cloudinary...')
         const uploadResult = await uploadImageToCloud(compressed, 'vasavi_temple_qr')
-        const finalUrl = uploadResult?.success ? uploadResult.url : compressed
-
-        setDonationForm(prev => ({ ...prev, customQrUrl: finalUrl }))
-        showToast(`Uploaded custom QR Code image: "${file.name}"`)
+        if (uploadResult?.success && uploadResult?.url) {
+          setDonationForm(prev => ({ ...prev, customQrUrl: uploadResult.url }))
+          showToast(`Uploaded custom QR Code image: "${file.name}"`)
+        } else {
+          showToast('Image upload failed. Please try again.')
+        }
       }
     }
     reader.readAsDataURL(file)
@@ -483,13 +485,15 @@ const Admin = () => {
 
         showToast('Uploading About image to Cloudinary...')
         const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_about')
-        const finalUrl = uploadResult?.success ? uploadResult.url : compressedDataUrl
-
-        setAboutForm(prev => ({
-          ...prev,
-          heroImage: finalUrl
-        }))
-        showToast(`About hero image updated: "${file.name}"`)
+        if (uploadResult?.success && uploadResult?.url) {
+          setAboutForm(prev => ({
+            ...prev,
+            heroImage: uploadResult.url
+          }))
+          showToast(`About hero image updated: "${file.name}"`)
+        } else {
+          showToast('Image upload failed. Please try again.')
+        }
       }
     }
     reader.readAsDataURL(file)
@@ -643,14 +647,16 @@ const Admin = () => {
 
         showToast('Uploading image to Cloudinary...')
         const uploadResult = await uploadImageToCloud(compressedDataUrl, 'vasavi_temple_gallery')
-        const finalUrl = uploadResult?.success ? uploadResult.url : compressedDataUrl
-
-        setFormData(prev => ({
-          ...prev,
-          image: finalUrl,
-          fileName: file.name
-        }))
-        showToast(`Uploaded "${file.name}" to cloud storage.`)
+        if (uploadResult?.success && uploadResult?.url) {
+          setFormData(prev => ({
+            ...prev,
+            image: uploadResult.url,
+            fileName: file.name
+          }))
+          showToast(`Uploaded "${file.name}" to cloud storage.`)
+        } else {
+          showToast('Image upload failed. Please try again.')
+        }
       }
     }
     reader.readAsDataURL(file)
@@ -769,6 +775,9 @@ const Admin = () => {
       const uploadRes = await uploadImageToCloud(currentData.image, `vasavi_temple_${modalType}`)
       if (uploadRes?.success && uploadRes?.url) {
         currentData.image = uploadRes.url
+      } else {
+        showToast('Image upload failed. Please try again.')
+        return
       }
     }
 
